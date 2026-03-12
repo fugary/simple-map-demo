@@ -1,0 +1,53 @@
+name: 构建 Windows EXE
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（如 v0.1.0）'
+        required: false
+        default: 'v0.1.0'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout 代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 缓存 Rust 依赖
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: 安装 npm 依赖
+        run: npm install
+
+      - name: 构建 Tauri EXE
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.event.inputs.version }}
+          releaseName: 'Simple Map Demo ${{ github.event.inputs.version }}'
+          releaseBody: |
+            ## 地图 Web API 测试平台 ${{ github.event.inputs.version }}
+
+            支持百度地图、Google Maps、高德地图 API 测试。
+
+            ### 下载
+            - **Windows**: 下载 `.msi` 安装包 或 `.exe` 便携版
+          releaseDraft: false
+          prerelease: false

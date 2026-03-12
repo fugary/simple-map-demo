@@ -1,0 +1,349 @@
+/* ====== 多地图服务商测试平台 - 公用样式 ====== */
+
+[v-cloak] {
+  display: none !important;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+  background-color: #f5f7fa;
+}
+
+#app, .layout-container {
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ====== Sidebar ====== */
+.sidebar {
+  background-color: #fff;
+  border-right: 1px solid #e6e6e6;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.05);
+  z-index: 10;
+}
+
+.sidebar-header {
+  padding: 15px 20px;
+  border-bottom: 1px solid #ebeef5;
+  color: white;
+}
+
+.sidebar-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+/* ====== Sidebar Navigation ====== */
+.sidebar-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.sidebar-nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #fff;
+  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.sidebar-nav a:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.nav-divider {
+  display: none;
+}
+
+.sidebar-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ====== Tabs ====== */
+.func-tabs {
+  border: none !important;
+  box-shadow: none !important;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.func-tabs .el-tabs__content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-content-flex {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ====== Cards ====== */
+.box-card-flex {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
+
+.box-card-flex .el-card__body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.el-table {
+  flex: 1;
+}
+
+.box-card {
+  margin-bottom: 10px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+}
+
+.el-card__header {
+  padding: 10px 15px !important;
+  background-color: #f5f7fa;
+}
+
+.card-header span {
+  font-weight: bold;
+  font-size: 14px;
+  color: #303133;
+}
+
+.el-card__body {
+  padding: 15px !important;
+}
+
+/* ====== Flex Helpers ====== */
+.flex-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.flex-wrap .el-button {
+  margin-left: 0 !important;
+}
+
+/* ====== Map Container ====== */
+.main-content {
+  padding: 0 !important;
+  position: relative;
+  height: 100%;
+}
+
+.map-container {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.map-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.map-overlay h2 {
+  color: #909399;
+  font-weight: normal;
+}
+
+/* ====== Result Tabs ====== */
+.result-tabs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin: 8px 0 0 0;
+  background: #fff;
+  border: 1px solid #dcdfe6 !important;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
+}
+
+.result-tabs .el-tabs__header {
+  margin: 0 !important;
+  background: #f5f7fa;
+  border-bottom: 1px solid #dcdfe6;
+}
+
+.result-tabs .el-tabs__content {
+  flex: 1;
+  overflow: hidden;
+  padding: 8px !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.result-tabs .el-tab-pane {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ====== JSON Panel ====== */
+.json-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.json-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 0 8px 0;
+  flex-shrink: 0;
+}
+
+.json-scrollbar {
+  flex: 1;
+  overflow: hidden;
+}
+
+.json-code {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  padding: 12px;
+  border-radius: 6px;
+  margin: 0;
+  white-space: pre;
+  word-break: break-all;
+}
+
+/* JSON Syntax Highlighting - Catppuccin Mocha inspired */
+.json-key {
+  color: #89b4fa;
+}
+
+.json-string {
+  color: #a6e3a1;
+}
+
+.json-number {
+  color: #fab387;
+}
+
+.json-boolean {
+  color: #cba6f7;
+}
+
+.json-null {
+  color: #f38ba8;
+}
+
+/* ====== Route Detail ====== */
+.route-detail-scrollbar {
+  flex: 1;
+  overflow: hidden;
+}
+
+.route-summary-card {
+  padding: 8px 0;
+}
+
+.route-summary-card + .route-summary-card {
+  border-top: 1px dashed #e4e7ed;
+  margin-top: 8px;
+}
+
+.route-summary-header {
+  margin-bottom: 10px;
+}
+
+.route-summary-metrics {
+  display: flex;
+  gap: 16px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #ecf5ff 0%, #f0f9eb 100%);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.metric-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.metric-label {
+  font-size: 11px;
+  color: #909399;
+  margin-bottom: 4px;
+}
+
+.metric-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.route-timeline {
+  padding-left: 2px;
+}
+
+.route-timeline .el-timeline-item {
+  padding-bottom: 8px;
+}
+
+.step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.step-text {
+  font-size: 12px;
+  color: #303133;
+  line-height: 1.4;
+}
+
+.step-info {
+  font-size: 11px;
+  color: #909399;
+}

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>百度地图测试页面</title>
+  
+  <!-- Element Plus CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+  
+  <!-- Shared CSS -->
+  <link rel="stylesheet" href="../shared/common.css">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Vue 3 and Element Plus JS -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://unpkg.com/element-plus"></script>
+  <script src="https://unpkg.com/@element-plus/icons-vue"></script>
+</head>
+<body>
+  <div id="app" v-cloak>
+    <el-container class="layout-container">
+      <!-- Sidebar Control Panel -->
+      <el-aside width="450px" class="sidebar">
+        <el-config-provider size="small">
+          <div class="sidebar-header">
+            <div class="sidebar-nav">
+              <a href="../index.html" class="nav-home" title="返回首页">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> 首页
+              </a>
+              <a href="../google-map/index.html" class="nav-switch" title="切换到 Google Maps">
+                <svg viewBox="0 0 92 132" width="12" height="17" xmlns="http://www.w3.org/2000/svg"><path d="M46 0C20.6 0 0 20.6 0 46c0 31.8 41.3 79.9 43.1 82a3.8 3.8 0 005.8 0C50.7 125.9 92 77.8 92 46 92 20.6 71.4 0 46 0z" fill="#EA4335"/><path d="M46 0v92C20.6 92 0 71.4 0 46 0 20.6 20.6 0 46 0z" fill="#1E88E5"/><circle cx="46" cy="46" r="18" fill="#fff"/></svg> Google Maps
+              </a>
+              <a href="../amap-map/index.html" class="nav-switch" title="切换到高德地图">
+                <svg viewBox="0 0 100 130" width="11" height="14" xmlns="http://www.w3.org/2000/svg"><path d="M50 0C27.9 0 10 17.9 10 40c0 27.6 36 80 38 82.8a2.4 2.4 0 003.9 0C53.9 120 90 67.6 90 40 90 17.9 72.1 0 50 0z" fill="#FF6B35"/><circle cx="50" cy="40" r="17" fill="#fff"/></svg> 高德地图
+              </a>
+            </div>
+            <h2>百度地图 Web API 测试</h2>
+          </div>
+
+          <div class="sidebar-content">
+            <el-tabs v-model="activeTab" class="func-tabs" type="border-card">
+              
+              <!-- TAB 1: 基础配置与控制 -->
+              <el-tab-pane label="配置面板" name="config">
+                <el-card class="box-card" shadow="never">
+                  <el-form label-width="90px" size="small">
+                    <el-form-item label="前端端侧 AK">
+                      <el-select v-model="browserAk" placeholder="浏览器端使用" allow-create filterable clearable style="width: 100%">
+                        <el-option v-for="item in browserAkList" :key="item" :label="item" :value="item" />
+                      </el-select>
+                    </el-form-item>
+                    <el-form-item label="服务端侧 AK">
+                      <el-select v-model="serverAk" placeholder="服务端 API 使用" allow-create filterable clearable style="width: 100%">
+                        <el-option v-for="item in serverAkList" :key="item" :label="item" :value="item" />
+                      </el-select>
+                    </el-form-item>
+                    <el-form-item label="默认检索区">
+                      <el-select v-model="globalRegion" placeholder="如：北京 / New York / Tokyo" allow-create filterable clearable style="width: 100%">
+                        <el-option v-for="item in regionList" :key="item" :label="item" :value="item" />
+                      </el-select>
+                    </el-form-item>
+                    <el-form-item label="接口范围">
+                      <el-tag :type="mapScope === 'international' ? 'warning' : 'success'" size="small" effect="plain">
+                        {{ mapScope === 'international' ? '🌍 国际' : '🇨🇳 国内' }}
+                      </el-tag>
+                      <span style="font-size: 11px; color: #909399; margin-left: 8px;">根据城市自动检测</span>
+                    </el-form-item>
+                  </el-form>
+                  <el-button type="primary" :loading="mapLoading" @click="loadBaiduMap" style="width: 100%; margin-top: 10px;">加载地图并保存配置</el-button>
+                  <p class="help-text" style="font-size: 11px; color: #909399; margin-top: 10px;">提示: AK 支持国际地图时，检索区可填写海外城市（如 London、New York）。加载后会自动判断国内/国际模式。前端渲染对应浏览器端 AK，纯数据接口需配置服务端 AK。</p>
+                </el-card>
+              </el-tab-pane>
+
+              <!-- TAB 2: 地点搜索 -->
+              <el-tab-pane label="地点搜索" name="search" :disabled="!mapReady">
+                <el-card class="box-card box-card-flex" shadow="never">
+                  <el-form :model="searchForm" label-width="60px" @submit.prevent style="display: flex; flex-direction: column; height: 100%;">
+                    <el-form-item label="接口模式">
+                      <el-radio-group v-model="searchForm.apiMode">
+                        <el-radio label="webgl">前端渲染 (WebGL LocalSearch)</el-radio>
+                        <el-radio label="server">纯数据 (Server Web API: /v2/place)</el-radio>
+                      </el-radio-group>
+                    </el-form-item>
+                    <el-row :gutter="10">
+                      <el-col :span="12">
+                        <el-form-item label="结果条数">
+                          <el-input-number v-model="searchForm.count" :min="1" :max="50" style="width: 100%" />
+                        </el-form-item>
+                      </el-col>
+                      <el-col :span="12">
+                        <el-button type="primary" :loading="searchLoading" @click="doSearch" style="width: 100%;">关键词搜索</el-button>
+                      </el-col>
+                    </el-row>
+                    <el-row :gutter="10">
+                      <el-col :span="24">
+                        <el-form-item label="关键字">
+                          <el-input v-model="searchForm.keyword" placeholder="如：天安门 / Times Square" @keyup.enter="doSearch" />
+                        </el-form-item>
+                      </el-col>
+                    </el-row>
+                    <el-row :gutter="10" style="margin-bottom: 10px;">
+                      <el-col :span="24">
+                        <div class="flex-wrap" style="justify-content: center">
+                          <el-button size="small" type="info" plain @click="quickSearch('行政区')">行政区</el-button>
+                          <el-button size="small" type="info" plain @click="quickSearch('飞机场')">机场</el-button>
+                          <el-button size="small" type="info" plain @click="quickSearch('火车站')">火车站</el-button>
+                          <el-button size="small" type="info" plain @click="quickSearch('商圈')">商圈</el-button>
+                          <el-button size="small" type="info" plain @click="quickSearch('地铁站')">地铁站</el-button>
+                          <el-button size="small" type="success" plain @click="quickSearch('airport')">Airport</el-button>
+                          <el-button size="small" type="success" plain @click="quickSearch('hotel')">Hotel</el-button>
+                          <el-button size="small" type="success" plain @click="quickSearch('train station')">Train Station</el-button>
+                          <el-button size="small" type="success" plain @click="quickSearch('subway station')">Subway Station</el-button>
+                        </div>
+                      </el-col>
+                    </el-row>
+                    
+                    <!-- Search Results: Tab mode for server, table for webgl -->
+                    <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column;" v-if="searchResults.length > 0 || serverSearchRawData">
+                      
+                      <!-- Server mode: Tab display -->
+                      <el-tabs v-if="searchForm.apiMode === 'server' && serverSearchRawData" v-model="searchResultTab" type="border-card" class="result-tabs">
+                        <el-tab-pane label="列表展示" name="list">
+                          <el-table :data="searchResults" height="100%" style="width: 100%" @row-click="viewOnMap">
+                            <el-table-column prop="title" label="名称" width="130" show-overflow-tooltip></el-table-column>
+                            <el-table-column prop="address" label="地点/坐标" show-overflow-tooltip></el-table-column>
+                          </el-table>
+                        </el-tab-pane>
+                        <el-tab-pane label="JSON 数据" name="json">
+                          <div class="json-panel">
+                            <div class="json-toolbar">
+                              <el-button size="small" type="primary" plain @click="copyJson(serverSearchRawData)">
+                                📋 复制 JSON
+                              </el-button>
+                            </div>
+                            <el-scrollbar class="json-scrollbar">
+                              <pre class="json-code" v-html="searchJsonHtml"></pre>
+                            </el-scrollbar>
+                          </div>
+                        </el-tab-pane>
+                      </el-tabs>
+
+                      <!-- WebGL mode: simple table -->
+                      <template v-else-if="searchResults.length > 0">
+                        <el-table :data="searchResults" height="100%" style="width: 100%" @row-click="viewOnMap">
+                          <el-table-column prop="title" label="名称" width="130" show-overflow-tooltip></el-table-column>
+                          <el-table-column prop="address" label="地点/坐标" show-overflow-tooltip></el-table-column>
+                        </el-table>
+                      </template>
+                    </div>
+                  </el-form>
+                </el-card>
+              </el-tab-pane>
+
+              <!-- TAB 3: 路线规划 -->
+              <el-tab-pane label="路线规划" name="route" :disabled="!mapReady">
+                <el-card class="box-card box-card-flex" shadow="never">
+                  <el-form :model="routeForm" label-width="70px" @submit.prevent style="display: flex; flex-direction: column; height: 100%;">
+                    <el-form-item label="接口模式">
+                      <el-radio-group v-model="routeForm.apiMode">
+                        <el-radio label="webgl">前端渲染 (WebGL Route)</el-radio>
+                        <el-radio label="server">纯数据 (Server Direction API)</el-radio>
+                      </el-radio-group>
+                    </el-form-item>
+                    <el-form-item label="起点">
+                      <el-row :gutter="5" style="width: 100%">
+                        <el-col :span="14"><el-input v-model="routeForm.start" placeholder="搜索地址或坐标" /></el-col>
+                        <el-col :span="10"><el-input v-model="routeForm.startCoords" placeholder="自动解析" disabled /></el-col>
+                      </el-row>
+                    </el-form-item>
+                    <el-form-item label="终点">
+                      <el-row :gutter="5" style="width: 100%">
+                        <el-col :span="14"><el-input v-model="routeForm.end" placeholder="搜索地址或坐标" /></el-col>
+                        <el-col :span="10"><el-input v-model="routeForm.endCoords" placeholder="自动解析" disabled /></el-col>
+                      </el-row>
+                    </el-form-item>
+                    <!-- Unified travel mode for both modes -->
+                    <el-form-item label="出行方式">
+                      <el-radio-group v-model="routeForm.travelMode">
+                        <el-radio label="driving">驾车</el-radio>
+                        <el-radio label="transit">公交</el-radio>
+                        <el-radio label="walking">步行</el-radio>
+                        <el-radio label="riding">骑行</el-radio>
+                      </el-radio-group>
+                    </el-form-item>
+
+                    <el-button type="primary" style="width: 100%; margin-bottom: 15px;" :loading="routeLoading" @click="calcRoute">开始规划</el-button>
+
+                    <!-- Route Detail Info -->
+                    <div v-if="routeDetailInfo && routeDetailInfo.length > 0" style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+                      
+                      <!-- Server mode: Tab display -->
+                      <el-tabs v-if="routeForm.apiMode === 'server' && routeResults" v-model="routeResultTab" type="border-card" class="result-tabs">
+                        <el-tab-pane label="路线详情" name="list">
+                          <el-scrollbar class="route-detail-scrollbar">
+                            <div v-for="route in routeDetailInfo" :key="route.index" class="route-summary-card">
+                              <div class="route-summary-header">
+                                <el-tag type="primary" effect="dark" size="small">方案 {{ route.index }}</el-tag>
+                              </div>
+                              <div class="route-summary-metrics">
+                                <div class="metric-item">
+                                  <span class="metric-label">总距离</span>
+                                  <span class="metric-value">{{ route.distance }}</span>
+                                </div>
+                                <div class="metric-item">
+                                  <span class="metric-label">预计耗时</span>
+                                  <span class="metric-value">{{ route.duration }}</span>
+                                </div>
+                              </div>
+                              <el-timeline v-if="route.steps && route.steps.length > 0" class="route-timeline">
+                                <el-timeline-item v-for="step in route.steps" :key="step.index" size="small" :type="step.vehicleName ? 'success' : 'primary'">
+                                  <div class="step-content">
+                                    <div v-if="step.vehicleName" style="margin-bottom: 2px;">
+                                      <el-tag size="small" type="success" effect="plain">{{ step.vehicleName }}</el-tag>
+                                    </div>
+                                    <span class="step-text">{{ step.instruction }}</span>
+                                    <span class="step-info" v-if="step.distance || step.duration">
+                                      {{ step.distance }}<template v-if="step.distance && step.duration"> · </template>{{ step.duration }}
+                                    </span>
+                                  </div>
+                                </el-timeline-item>
+                              </el-timeline>
+                            </div>
+                          </el-scrollbar>
+                        </el-tab-pane>
+                        <el-tab-pane label="JSON 数据" name="json">
+                          <div class="json-panel">
+                            <div class="json-toolbar">
+                              <el-button size="small" type="primary" plain @click="copyJson(routeResults)">
+                                📋 复制 JSON
+                              </el-button>
+                            </div>
+                            <el-scrollbar class="json-scrollbar">
+                              <pre class="json-code" v-html="routeJsonHtml"></pre>
+                            </el-scrollbar>
+                          </div>
+                        </el-tab-pane>
+                      </el-tabs>
+
+                      <!-- WebGL mode: direct display -->
+                      <template v-else>
+                        <el-scrollbar class="route-detail-scrollbar">
+                          <div v-for="route in routeDetailInfo" :key="route.index" class="route-summary-card">
+                            <div class="route-summary-metrics">
+                              <div class="metric-item">
+                                <span class="metric-label">总距离</span>
+                                <span class="metric-value">{{ route.distance }}</span>
+                              </div>
+                              <div class="metric-item">
+                                <span class="metric-label">预计耗时</span>
+                                <span class="metric-value">{{ route.duration }}</span>
+                              </div>
+                            </div>
+                            <el-timeline v-if="route.steps && route.steps.length > 0" class="route-timeline">
+                              <el-timeline-item v-for="step in route.steps" :key="step.index" size="small" type="primary">
+                                <div class="step-content">
+                                  <span class="step-text">{{ step.instruction }}</span>
+                                  <span class="step-info" v-if="step.distance">{{ step.distance }}</span>
+                                </div>
+                              </el-timeline-item>
+                            </el-timeline>
+                          </div>
+                        </el-scrollbar>
+                      </template>
+                    </div>
+                  </el-form>
+                </el-card>
+              </el-tab-pane>
+
+              <el-tab-pane label="坐标显示" name="locate" :disabled="!mapReady">
+                <el-card class="box-card" shadow="never">
+                  <el-form :model="locateForm" label-width="70px" @submit.prevent>
+                    <el-form-item label="查找定位">
+                      <el-input v-model="locateForm.input" placeholder="输入地址或 经度,纬度" clearable />
+                    </el-form-item>
+                    <el-button type="primary" @click="locateInput" style="width: 100%; margin-bottom: 20px;">定位并在下方显示坐标</el-button>
+                    <div style="text-align: center; margin-top: 15px;">
+                      <p style="color: #606266; font-size: 13px; margin-bottom: 5px;">解析出的中心点经纬度</p>
+                      <el-tag size="large" type="success" effect="plain" v-if="locateForm.resolvedCoords">
+                         {{ locateForm.resolvedCoords }}
+                      </el-tag>
+                      <el-tag size="large" type="info" effect="plain" v-else>
+                         暂无定位数据
+                      </el-tag>
+                    </div>
+                  </el-form>
+                </el-card>
+              </el-tab-pane>
+
+            </el-tabs>
+          </div>
+        </el-config-provider>
+      </el-aside>
+
+      <!-- Main Map Content -->
+      <el-main class="main-content">
+        <div id="map-container" class="map-container"></div>
+        <div class="map-overlay" v-if="!mapReady">
+          <h2>请先配置百度地图 AK 并加载地图</h2>
+        </div>
+      </el-main>
+    </el-container>
+  </div>
+  
+  <!-- Shared Utils -->
+  <script src="../shared/utils.js"></script>
+  <!-- Route Drawer -->
+  <script src="route-drawer.js"></script>
+  <!-- App Logic -->
+  <script src="app.js"></script>
+</body>
+</html>

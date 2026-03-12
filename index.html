@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>地图 Web API 测试平台</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://unpkg.com/element-plus"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    [v-cloak] { display: none !important; }
+    .portal-container {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    .portal-title {
+      color: #fff;
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .portal-subtitle {
+      color: rgba(255,255,255,0.85);
+      font-size: 15px;
+      margin-bottom: 40px;
+    }
+    .card-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      justify-content: center;
+      max-width: 900px;
+    }
+    .map-card {
+      width: 260px;
+      background: rgba(255,255,255,0.95);
+      border-radius: 16px;
+      padding: 32px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+    .map-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.18);
+    }
+    .card-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 56px;
+    }
+    .card-name {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #303133;
+    }
+    .card-desc {
+      font-size: 13px;
+      color: #909399;
+      line-height: 1.5;
+    }
+    .card-badge {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .badge-domestic {
+      background: #ecf5ff;
+      color: #409eff;
+    }
+    .badge-international {
+      background: #f0f9eb;
+      color: #67c23a;
+    }
+    .badge-coming {
+      background: #fdf6ec;
+      color: #e6a23c;
+    }
+    .card-disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .portal-footer {
+      margin-top: 48px;
+      color: rgba(255,255,255,0.6);
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" v-cloak>
+    <div class="portal-container">
+      <h1 class="portal-title">🗺️ 地图 Web API 测试平台</h1>
+      <p class="portal-subtitle">统一测试各地图服务商 Web API，支持国内与国际场景</p>
+
+      <div class="card-grid">
+
+        <a class="map-card" href="baidu-map/index.html">
+          <div class="card-icon">
+            <!-- Baidu paw logo -->
+            <svg viewBox="0 0 100 100" width="56" height="56" xmlns="http://www.w3.org/2000/svg">
+              <ellipse cx="38" cy="22" rx="10" ry="13" fill="#2932E1"/>
+              <ellipse cx="62" cy="22" rx="10" ry="13" fill="#2932E1"/>
+              <ellipse cx="20" cy="40" rx="8" ry="11" fill="#2932E1"/>
+              <ellipse cx="80" cy="40" rx="8" ry="11" fill="#2932E1"/>
+              <path d="M50 38 C28 38 18 54 20 70 C22 84 32 92 50 92 C68 92 78 84 80 70 C82 54 72 38 50 38 Z" fill="#2932E1"/>
+            </svg>
+          </div>
+          <div class="card-name">百度地图</div>
+          <div class="card-desc">Baidu Maps API<br/>支持 WebGL 前端渲染和服务端 API</div>
+        </a>
+
+        <a class="map-card" href="google-map/index.html">
+          <div class="card-icon">
+            <!-- Google Maps official pin icon -->
+            <svg viewBox="0 0 92 132" width="40" height="57" xmlns="http://www.w3.org/2000/svg">
+              <path d="M46 0C20.6 0 0 20.6 0 46c0 31.8 41.3 79.9 43.1 82a3.8 3.8 0 005.8 0C50.7 125.9 92 77.8 92 46 92 20.6 71.4 0 46 0z" fill="#EA4335"/>
+              <path d="M46 0v92C20.6 92 0 71.4 0 46 0 20.6 20.6 0 46 0z" fill="#1E88E5"/>
+              <path d="M46 0C71.4 0 92 20.6 92 46c0 31.8-41.3 79.9-43.1 82a3.8 3.8 0 01-2.9 1.3V0z" fill="#EA4335"/>
+              <path d="M46 28a18 18 0 100 36 18 18 0 000-36z" fill="#fff"/>
+              <path d="M46 28v36a18 18 0 010-36z" fill="#E8F0FE"/>
+            </svg>
+          </div>
+          <div class="card-name">Google Maps</div>
+          <div class="card-desc">Google Maps Platform<br/>支持 Places、Directions、Geocoding</div>
+        </a>
+
+        <a class="map-card" href="amap-map/index.html">
+          <div class="card-icon">
+            <!-- Amap / Gaode logo pin -->
+            <svg viewBox="0 0 100 130" width="43" height="56" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="amapGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#FF6B35"/>
+                  <stop offset="100%" stop-color="#E5001C"/>
+                </linearGradient>
+              </defs>
+              <path d="M50 0C27.9 0 10 17.9 10 40c0 27.6 36 80 38 82.8a2.4 2.4 0 003.9 0C53.9 120 90 67.6 90 40 90 17.9 72.1 0 50 0z" fill="url(#amapGrad)"/>
+              <circle cx="50" cy="40" r="17" fill="#fff"/>
+              <path d="M44 32 L56 32 L56 48 L44 48Z" fill="#FF6B35"/>
+              <path d="M38 38 L62 38" stroke="#FF6B35" stroke-width="4" fill="none"/>
+            </svg>
+          </div>
+          <div class="card-name">高德地图</div>
+          <div class="card-desc">Amap Web JS API<br/>支持前端渲染和服务端 API</div>
+        </a>
+
+      </div>
+
+      <div class="portal-footer">CITSGBT Map API Test Platform</div>
+    </div>
+  </div>
+  <script>
+    Vue.createApp({}).use(ElementPlus).mount('#app');
+  </script>
+</body>
+</html>

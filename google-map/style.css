@@ -1,0 +1,12 @@
+/* ====== Google Maps - 专有样式 ====== */
+/* 通用样式已抽取到 ../shared/common.css */
+
+/* Google 绿色主题 */
+.sidebar-header {
+  background-color: #34A853;
+}
+
+/* Google Maps 路线详情渐变色 */
+.route-summary-metrics {
+  background: linear-gradient(135deg, #e8f5e9 0%, #e3f2fd 100%);
+}

@@ -1,0 +1,7 @@
+/* ====== 百度地图 - 专有样式 ====== */
+/* 通用样式已抽取到 ../shared/common.css */
+
+/* 百度蓝色主题 */
+.sidebar-header {
+  background-color: #409EFF;
+}

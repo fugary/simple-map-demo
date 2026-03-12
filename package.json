@@ -1,0 +1,24 @@
+{
+  "name": "simple-map-demo",
+  "version": "0.1.0",
+  "description": "多地图服务商 Web API 测试平台",
+  "scripts": {
+    "start": "live-server --host=localhost .",
+    "dev": "live-server --host=localhost .",
+    "lint:baidu": "eslint baidu-map/app.js",
+    "lint:google": "eslint google-map/app.js",
+    "lint:shared": "eslint shared/utils.js",
+    "lint": "eslint baidu-map/app.js baidu-map/route-drawer.js google-map/app.js amap-map/app.js amap-map/route-drawer.js shared/utils.js",
+    "tauri": "tauri"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tauri-apps/cli": "^2.10.1",
+    "eslint": "^10.0.3",
+    "http-server": "^14.1.1",
+    "live-server": "^1.2.2"
+  }
+}
