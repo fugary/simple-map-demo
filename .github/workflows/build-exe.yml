@@ -1,4 +1,4 @@
-name: 构建 Windows EXE
+name: 构建 桌面端程序 (Win/Mac/Linux)
 
 on:
   workflow_dispatch:
@@ -9,11 +9,15 @@ on:
         default: 'v0.1.0'
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  publish:
     permissions:
       contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-latest, ubuntu-22.04, windows-latest]
 
+    runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout 代码
         uses: actions/checkout@v4
@@ -32,10 +36,16 @@ jobs:
         with:
           workspaces: src-tauri
 
+      - name: 安装系统依赖 (Linux only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+
       - name: 安装 npm 依赖
         run: npm install
 
-      - name: 构建 Tauri EXE
+      - name: 构建 Tauri App
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -48,6 +58,8 @@ jobs:
             支持百度地图、Google Maps、高德地图 API 测试。
 
             ### 下载
-            - **Windows**: 下载 `.msi` 安装包 或 `.exe` 便携版
+            - **Windows**: 下载 `.msi` 或 `.exe`
+            - **macOS**: 下载 `.dmg` 或 `.app`
+            - **Linux**: 下载 `.AppImage` 或 `.deb`
           releaseDraft: false
           prerelease: false
