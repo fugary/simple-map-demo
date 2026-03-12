@@ -293,7 +293,6 @@ const app = createApp({
     const quickSearch = (keyword) => {
       if (!mapReady.value || !mapInstance) return;
       activeTab.value = 'search';
-      searchForm.apiMode = 'webgl'; 
       searchForm.keyword = keyword;
       if (!globalRegion.value) {
         globalRegion.value = '北京';

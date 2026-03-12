@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: '版本号（如 v0.1.0）'
-        required: false
-        default: 'v0.1.0'
+        description: '发布版本号 (例如 0.1.1, 不要带 v)'
+        required: true
+        default: '0.1.0'
 
 jobs:
   publish:
@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout 代码
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: 配置 Node.js
         uses: actions/setup-node@v4
@@ -36,11 +38,34 @@ jobs:
         with:
           workspaces: src-tauri
 
+      - name: 更新项目版本号
+        shell: bash
+        run: |
+          NEW_VER="${{ github.event.inputs.version }}"
+          echo "Setting version to $NEW_VER"
+          # Update package.json
+          npm version $NEW_VER --no-git-tag-version
+          # Update tauri.conf.json
+          sed -i "s/\"version\": \".*\"/\"version\": \"$NEW_VER\"/" src-tauri/tauri.conf.json
+          # Update Cargo.toml
+          sed -i "s/^version = \".*\"/version = \"$NEW_VER\"/" src-tauri/Cargo.toml
+
+      - name: 提交版本更新 (仅在 Windows 运行一次)
+        if: matrix.platform == 'windows-latest'
+        shell: bash
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "chore: bump version to v${{ github.event.inputs.version }}" || echo "No changes to commit"
+          git tag -a "v${{ github.event.inputs.version }}" -m "Release v${{ github.event.inputs.version }}"
+          git push origin main --follow-tags --force
+
       - name: 安装系统依赖 (Linux only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: 安装 npm 依赖
         run: npm install
@@ -50,10 +75,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.event.inputs.version }}
-          releaseName: 'Simple Map Demo ${{ github.event.inputs.version }}'
+          tagName: v${{ github.event.inputs.version }}
+          releaseName: 'Simple Map Demo v${{ github.event.inputs.version }}'
           releaseBody: |
-            ## 地图 Web API 测试平台 ${{ github.event.inputs.version }}
+            ## 地图 Web API 测试平台 v${{ github.event.inputs.version }}
 
             支持百度地图、Google Maps、高德地图 API 测试。
 
