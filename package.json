@@ -1,6 +1,6 @@
 {
   "name": "simple-map-demo",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "多地图服务商 Web API 测试平台",
   "scripts": {
     "start": "live-server --host=localhost .",

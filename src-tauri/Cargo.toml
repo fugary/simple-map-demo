@@ -1,6 +1,6 @@
 [package]
 name = "simple-map-demo"
-version = "0.1.0"
+version = "0.1.1"
 description = "地图 Web API 测试平台"
 authors = []
 edition = "2021"
