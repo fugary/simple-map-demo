@@ -3,6 +3,7 @@
   "version": "0.1.1",
   "description": "多地图服务商 Web API 测试平台",
   "scripts": {
+    "build": "node scripts/build-static.mjs",
     "start": "live-server --host=localhost .",
     "dev": "live-server --host=localhost .",
     "lint:baidu": "eslint baidu-map/app.js",

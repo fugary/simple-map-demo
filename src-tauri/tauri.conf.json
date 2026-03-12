@@ -2,9 +2,10 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "simple-map-demo",
   "version": "0.1.1",
-  "identifier": "com.simple-map-demo.app",
+  "identifier": "com.simplemapdemo.desktop",
   "build": {
-    "frontendDist": "..",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist",
     "devUrl": "http://localhost:8080"
   },
   "app": {
