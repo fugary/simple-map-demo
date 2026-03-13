@@ -3,9 +3,10 @@
   "version": "0.1.1",
   "description": "多地图服务商 Web API 测试平台",
   "scripts": {
-    "build": "node scripts/build-static.mjs",
-    "start": "live-server --host=localhost .",
-    "dev": "live-server --host=localhost .",
+    "build": "vite build",
+    "start": "vite --host 0.0.0.0 --port 8080",
+    "dev": "vite --host 0.0.0.0 --port 8080",
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
     "lint:baidu": "eslint baidu-map/app.js",
     "lint:google": "eslint google-map/app.js",
     "lint:shared": "eslint shared/utils.js",
@@ -18,8 +19,11 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@tauri-apps/cli": "^2.10.1",
+    "element-plus": "^2.13.5",
     "eslint": "^10.0.3",
     "http-server": "^14.1.1",
-    "live-server": "^1.2.2"
+    "live-server": "^1.2.2",
+    "vite": "^8.0.0",
+    "vue": "^3.5.30"
   }
 }

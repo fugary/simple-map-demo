@@ -1,0 +1,51 @@
+{
+  "common": {
+    "langLabel": "语言",
+    "copyJsonButton": "复制 JSON",
+    "copyJsonSuccess": "已复制到剪贴板",
+    "copyJsonError": "复制失败，请手动复制"
+  },
+  "home": {
+    "title": "地图 Web API 测试平台",
+    "subtitle": "统一测试各地图服务商 Web API，支持国内与国际场景",
+    "footer": "CITSGBT Map API Test Platform",
+    "providers": {
+      "baidu": {
+        "name": "百度地图",
+        "desc": "Baidu Maps API<br/>支持 WebGL 前端渲染和服务端 API"
+      },
+      "google": {
+        "name": "Google Maps",
+        "desc": "Google Maps Platform<br/>支持 Places、Directions、Geocoding"
+      },
+      "amap": {
+        "name": "高德地图",
+        "desc": "Amap Web JS API<br/>支持前端渲染和服务端 API"
+      }
+    }
+  },
+  "nav": {
+    "home": "首页",
+    "homeTitle": "返回首页",
+    "baidu": "百度地图",
+    "baiduTitle": "切换到百度地图",
+    "google": "Google Maps",
+    "googleTitle": "切换到 Google Maps",
+    "amap": "高德地图",
+    "amapTitle": "切换到高德地图"
+  },
+  "pages": {
+    "baidu": {
+      "title": "百度地图 Web API 测试",
+      "overlay": "请先配置百度地图 AK 并加载地图"
+    },
+    "google": {
+      "title": "Google Maps API 测试",
+      "overlay": "请先配置 Google Maps API Key 并加载地图"
+    },
+    "amap": {
+      "title": "高德地图 Web API 测试",
+      "overlay": "请先配置高德地图 AK 并加载地图"
+    }
+  }
+}

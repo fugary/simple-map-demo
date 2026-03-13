@@ -1,10 +1,25 @@
-const { createApp, ref, onMounted, reactive, markRaw, computed } = Vue;
+﻿/* global fetch, URLSearchParams */
+import { createApp, ref, onMounted, reactive, markRaw, computed } from 'vue';
+import ElementPlus from 'element-plus';
+import 'element-plus/dist/index.css';
+import { MapUtils } from '../shared/utils.js';
+import {
+  DEFAULT_GOOGLE_PROXY_BASE,
+  getStoredGoogleConfig,
+  googleGeocode,
+  googleNearbySearch,
+  googleTextSearch
+} from '../shared/google-provider.js';
+import '../shared/i18n.js';
+import './route-drawer.js';
 
-const DEFAULT_GOOGLE_PROXY_BASE = 'https://mock-dev.citsgbt.com/mock/3471f5ba61824bfea6efb264d70e235d';
+if (typeof window !== 'undefined') {
+  window.ElementPlus = ElementPlus;
+}
 
 const app = createApp({
   setup() {
-    const mapLanguage = () => window.AppI18n && window.AppI18n.getLang() === 'en' ? 'en' : 'zh-CN';
+    const mapLanguage = () => (window.AppI18n && window.AppI18n.getLang() === 'en' ? 'en' : 'zh-CN');
     const BAIDU_SCRIPT_ID = 'simple-map-demo-baidu-sdk';
 
     const browserAkList = ref([]);
@@ -17,6 +32,8 @@ const app = createApp({
     const activeTab = ref('config');
     const mapScope = ref('domestic');
     const hasGoogleRouteProvider = ref(false);
+    const hasGooglePlaceProvider = ref(false);
+
     let mapInstance = null;
 
     const mapLoading = ref(false);
@@ -24,7 +41,11 @@ const app = createApp({
     const routeLoading = ref(false);
     const locateLoading = ref(false);
 
-    const searchForm = reactive({ apiMode: 'webgl', keyword: '时报广场', count: 10 });
+    const searchForm = reactive({
+      apiMode: 'webgl',
+      keyword: '时报广场',
+      count: 10
+    });
     const searchResults = ref([]);
     const serverSearchRawData = ref(null);
     const searchResultTab = ref('list');
@@ -34,7 +55,8 @@ const app = createApp({
       input: '',
       resolvedCoords: '',
       nearbyKeyword: '',
-      radius: 2000
+      radius: 2000,
+      count: 20
     });
     const nearbyResults = ref([]);
     const nearbyRawData = ref(null);
@@ -52,21 +74,44 @@ const app = createApp({
     const routeDetailInfo = ref(null);
     const routeResultTab = ref('list');
 
-    const searchJsonHtml = computed(() => serverSearchRawData.value ? MapUtils.highlightJson(JSON.stringify(serverSearchRawData.value, null, 2)) : '');
+    const searchJsonHtml = computed(() => (
+      serverSearchRawData.value
+        ? MapUtils.highlightJson(JSON.stringify(serverSearchRawData.value, null, 2))
+        : ''
+    ));
     const routeJsonHtml = computed(() => {
       const raw = routeResults.value && routeResults.value.raw ? routeResults.value.raw : routeResults.value;
       return raw ? MapUtils.highlightJson(JSON.stringify(raw, null, 2)) : '';
     });
-    const nearbyJsonHtml = computed(() => nearbyRawData.value ? MapUtils.highlightJson(JSON.stringify(nearbyRawData.value, null, 2)) : '');
+    const nearbyJsonHtml = computed(() => (
+      nearbyRawData.value
+        ? MapUtils.highlightJson(JSON.stringify(nearbyRawData.value, null, 2))
+        : ''
+    ));
+
+    const getGoogleConfig = () => {
+      const config = getStoredGoogleConfig();
+      if (!config.apiKey) return null;
+      return {
+        apiKey: config.apiKey,
+        region: config.region || '',
+        proxyBaseUrl: config.proxyBaseUrl || DEFAULT_GOOGLE_PROXY_BASE
+      };
+    };
 
     const initConfig = () => {
       browserAkList.value = MapUtils.loadConfigList('baidu_map_browser_aks');
       if (browserAkList.value.length > 0) browserAk.value = browserAkList.value[0];
+
       serverAkList.value = MapUtils.loadConfigList('baidu_map_server_aks');
       if (serverAkList.value.length > 0) serverAk.value = serverAkList.value[0];
+
       regionList.value = MapUtils.loadConfigList('baidu_map_regions');
       if (regionList.value.length > 0) globalRegion.value = regionList.value[0];
-      hasGoogleRouteProvider.value = MapUtils.loadConfigList('google_map_api_keys').length > 0;
+
+      const googleConfig = getGoogleConfig();
+      hasGoogleRouteProvider.value = Boolean(googleConfig);
+      hasGooglePlaceProvider.value = Boolean(googleConfig);
     };
 
     const destroyMapInstance = () => {
@@ -101,6 +146,12 @@ const app = createApp({
       raw
     });
 
+    const buildGooglePointItem = (item) => {
+      if (!item || !item.location) return null;
+      const coords = MapUtils.googleToBaiduCoords(item.location.lng, item.location.lat);
+      return buildPointItem(item.title, item.address, coords.lng, coords.lat, item.raw);
+    };
+
     const renderNearbyItems = (centerPoint, items) => {
       if (!mapInstance) return;
       clearDrawings();
@@ -114,7 +165,9 @@ const app = createApp({
         mapInstance.addOverlay(new window.BMapGL.Marker(item.point));
         points.push(item.point);
       });
-      if (points.length > 0) mapInstance.setViewport(points, { margins: [50, 50, 50, 50] });
+      if (points.length > 0) {
+        mapInstance.setViewport(points, { margins: [50, 50, 50, 50] });
+      }
     };
 
     const autoDetectMapScope = (region) => {
@@ -126,7 +179,9 @@ const app = createApp({
         onSearchComplete: (results) => {
           if (local.getStatus() === window.BMAP_STATUS_SUCCESS && results.getCurrentNumPois() > 0) {
             const poi = results.getPoi(0);
-            if (poi.point) mapScope.value = isInChina(poi.point.lng, poi.point.lat) ? 'domestic' : 'international';
+            if (poi.point) {
+              mapScope.value = isInChina(poi.point.lng, poi.point.lat) ? 'domestic' : 'international';
+            }
           }
         },
         pageCapacity: 1
@@ -139,6 +194,7 @@ const app = createApp({
         ElementPlus.ElMessage.warning('至少配置一个 AK 才能继续');
         return;
       }
+
       mapLoading.value = true;
       MapUtils.saveConfigVal(browserAkList, browserAk.value, 'baidu_map_browser_aks');
       MapUtils.saveConfigVal(serverAkList, serverAk.value, 'baidu_map_server_aks');
@@ -163,6 +219,7 @@ const app = createApp({
         window.__simpleMapBaiduLang = desiredLang;
         initMap();
       };
+
       const script = document.createElement('script');
       script.id = BAIDU_SCRIPT_ID;
       script.src = `https://api.map.baidu.com/api?v=1.0&type=webgl&ak=${browserAk.value}&language=${desiredLang}&callback=initBaiduMapCallback&_=${Date.now()}`;
@@ -177,7 +234,11 @@ const app = createApp({
       if (!serverAk.value) return resolve(null);
       const city = globalRegion.value && globalRegion.value !== '全国' ? globalRegion.value : '';
       MapUtils.jsonp(`https://api.map.baidu.com/geocoding/v3/?address=${encodeURIComponent(address)}&city=${encodeURIComponent(city)}&output=json&ak=${serverAk.value}`)
-        .then((res) => resolve(res && res.status === 0 && res.result ? { lng: res.result.location.lng, lat: res.result.location.lat } : null))
+        .then((res) => {
+          resolve(res && res.status === 0 && res.result
+            ? { lng: res.result.location.lng, lat: res.result.location.lat }
+            : null);
+        })
         .catch(() => resolve(null));
     };
 
@@ -201,24 +262,61 @@ const app = createApp({
     const getCoords = (addressOrCoords) => new Promise((resolve) => {
       const parsed = MapUtils.parseCoords(addressOrCoords);
       if (parsed) return resolve(parsed);
+
       const value = String(addressOrCoords || '').trim();
       if (!value) return resolve(null);
+
       if (mapInstance) {
-        localSearchGeo(value).then((result) => result ? resolve(result) : fallbackServerGeo(value, resolve));
+        localSearchGeo(value).then((result) => {
+          if (result) resolve(result);
+          else fallbackServerGeo(value, resolve);
+        });
       } else {
         fallbackServerGeo(value, resolve);
       }
     });
 
+    const resolveGoogleCoords = async (addressOrCoords) => {
+      const parsed = MapUtils.parseCoords(addressOrCoords);
+      if (parsed) return parsed;
+
+      const value = String(addressOrCoords || '').trim();
+      if (!value) return null;
+
+      const config = getGoogleConfig();
+      if (!config) return null;
+
+      const result = await googleGeocode({ address: value, config });
+      if (!result.location) return null;
+      return MapUtils.googleToBaiduCoords(result.location.lng, result.location.lat);
+    };
+
+    const getCoordsByMode = async (addressOrCoords, apiMode) => {
+      if (apiMode !== 'google') {
+        return getCoords(addressOrCoords);
+      }
+
+      try {
+        const googleResult = await resolveGoogleCoords(addressOrCoords);
+        if (googleResult) return googleResult;
+      } catch (error) {
+        console.warn('Google geocode failed, fallback to Baidu:', error);
+      }
+
+      return getCoords(addressOrCoords);
+    };
+
     const initMap = async () => {
       try {
         destroyMapInstance();
+
         let center = new window.BMapGL.Point(116.404, 39.915);
         const region = String(globalRegion.value || '').trim();
         if (region && region !== '全国') {
           const point = await getCoords(region);
           if (point) center = new window.BMapGL.Point(point.lng, point.lat);
         }
+
         mapInstance = markRaw(new window.BMapGL.Map('map-container', {
           displayOptions: { language: mapLanguage() === 'en' ? 'en' : 'zh' }
         }));
@@ -226,6 +324,7 @@ const app = createApp({
         mapInstance.enableScrollWheelZoom(true);
         mapInstance.addControl(new window.BMapGL.ScaleControl());
         mapInstance.addControl(new window.BMapGL.ZoomControl());
+
         mapReady.value = true;
         mapLoading.value = false;
         autoDetectMapScope(region);
@@ -238,58 +337,96 @@ const app = createApp({
 
     const doSearch = async () => {
       if (!searchForm.keyword) return;
+
       searchLoading.value = true;
-      if (searchForm.apiMode === 'server') {
-        if (!serverAk.value) {
-          searchLoading.value = false;
+      searchResults.value = [];
+      serverSearchRawData.value = null;
+
+      try {
+        if (searchForm.apiMode === 'google') {
+          const config = getGoogleConfig();
+          if (!config) {
+            ElementPlus.ElMessage.warning('请先配置 Google Maps API Key');
+            return;
+          }
+
+          const result = await googleTextSearch({
+            query: searchForm.keyword,
+            region: globalRegion.value === '全国' ? '' : globalRegion.value,
+            count: searchForm.count,
+            config
+          });
+          serverSearchRawData.value = result.raw;
+          if (result.raw && result.raw.status !== 'OK' && result.raw.status !== 'ZERO_RESULTS') {
+            throw new Error(result.raw.status || 'Unknown');
+          }
+          searchResults.value = result.items.map(buildGooglePointItem).filter(Boolean);
           return;
         }
-        try {
-          const apiPath = mapScope.value === 'international' ? 'place_abroad/v1/search' : 'place/v2/search';
-          const res = await MapUtils.jsonp(`https://api.map.baidu.com/${apiPath}?query=${encodeURIComponent(searchForm.keyword)}&region=${encodeURIComponent(globalRegion.value || '全国')}&output=json&ak=${serverAk.value}`);
-          serverSearchRawData.value = res;
-          searchResults.value = res && res.status === 0 ? (res.results || []).map((item) => buildPointItem(item.name, item.address, item.location.lng, item.location.lat, item)) : [];
-        } finally {
-          searchLoading.value = false;
-        }
-        return;
-      }
-      if (!mapInstance) {
-        searchLoading.value = false;
-        return;
-      }
-      clearDrawings();
-      serverSearchRawData.value = null;
-      const local = new window.BMapGL.LocalSearch(mapInstance, {
-        onSearchComplete: (results) => {
-          searchLoading.value = false;
-          if (local.getStatus() === window.BMAP_STATUS_SUCCESS) {
-            searchResults.value = [];
-            for (let i = 0; i < results.getCurrentNumPois(); i += 1) {
-              const poi = results.getPoi(i);
-              searchResults.value.push({
-                title: poi.title || 'Unnamed',
-                address: `${poi.address || 'Unknown'} [${poi.point ? `${poi.point.lng.toFixed(6)},${poi.point.lat.toFixed(6)}` : ''}]`,
-                point: poi.point,
-                raw: poi
-              });
-            }
-          } else {
-            searchResults.value = [];
+
+        if (searchForm.apiMode === 'server') {
+          if (!serverAk.value) {
+            ElementPlus.ElMessage.warning('请先配置服务端 AK');
+            return;
           }
-        },
-        pageCapacity: searchForm.count || 10
-      });
-      if (globalRegion.value && globalRegion.value !== '全国') local.setLocation(globalRegion.value);
-      local.search(searchForm.keyword);
+
+          const apiPath = mapScope.value === 'international' ? 'place_abroad/v1/search' : 'place/v2/search';
+          const res = await MapUtils.jsonp(
+            `https://api.map.baidu.com/${apiPath}?query=${encodeURIComponent(searchForm.keyword)}&region=${encodeURIComponent(globalRegion.value || '全国')}&output=json&ak=${serverAk.value}`
+          );
+          serverSearchRawData.value = res;
+          searchResults.value = res && res.status === 0
+            ? (res.results || []).map((item) => buildPointItem(item.name, item.address, item.location.lng, item.location.lat, item))
+            : [];
+          return;
+        }
+
+        if (!mapInstance) return;
+
+        clearDrawings();
+        const local = new window.BMapGL.LocalSearch(mapInstance, {
+          onSearchComplete: (results) => {
+            if (local.getStatus() === window.BMAP_STATUS_SUCCESS) {
+              searchResults.value = [];
+              for (let i = 0; i < results.getCurrentNumPois(); i += 1) {
+                const poi = results.getPoi(i);
+                searchResults.value.push({
+                  title: poi.title || 'Unnamed',
+                  address: `${poi.address || 'Unknown'} [${poi.point ? `${poi.point.lng.toFixed(6)},${poi.point.lat.toFixed(6)}` : ''}]`,
+                  point: poi.point,
+                  raw: poi
+                });
+              }
+            } else {
+              searchResults.value = [];
+            }
+          },
+          pageCapacity: searchForm.count || 10
+        });
+        if (globalRegion.value && globalRegion.value !== '全国') local.setLocation(globalRegion.value);
+        local.search(searchForm.keyword);
+      } catch (error) {
+        console.error(error);
+        searchResults.value = [];
+        serverSearchRawData.value = null;
+        ElementPlus.ElMessage.error(`地点搜索失败: ${error.message}`);
+      } finally {
+        searchLoading.value = false;
+      }
     };
 
     const viewOnMap = (item) => {
       if (!mapInstance || !item || !item.point) return;
+
       clearDrawings();
       mapInstance.addOverlay(new window.BMapGL.Marker(item.point));
       mapInstance.panTo(item.point);
-      const popup = new window.BMapGL.InfoWindow(`地址: ${item.address || ''}`, { title: item.title, width: 250, height: 80 });
+
+      const popup = new window.BMapGL.InfoWindow(`地址: ${item.address || ''}`, {
+        title: item.title,
+        width: 250,
+        height: 80
+      });
       mapInstance.openInfoWindow(popup, item.point);
     };
 
@@ -318,42 +455,90 @@ const app = createApp({
           }
           resolve(items);
         },
-        pageCapacity: 20
+        pageCapacity: locateForm.count || 20
       });
       local.searchNearby(locateForm.nearbyKeyword, centerPoint, locateForm.radius || 2000);
     });
 
+    const nearbyByGoogle = async (centerPoint) => {
+      const config = getGoogleConfig();
+      if (!config) {
+        throw new Error('Google API Key is missing');
+      }
+
+      const googleCenter = MapUtils.baiduToGoogleCoords(centerPoint.lng, centerPoint.lat);
+      const result = await googleNearbySearch({
+        location: { lat: googleCenter.lat, lng: googleCenter.lng },
+        keyword: locateForm.nearbyKeyword,
+        radius: locateForm.radius || 2000,
+        count: locateForm.count || 20,
+        config
+      });
+
+      return {
+        raw: result.raw,
+        items: result.items.map(buildGooglePointItem).filter(Boolean)
+      };
+    };
+
     const locateInput = async () => {
       if (!mapInstance) return;
+
       const input = locateForm.input.trim();
       if (!input) return;
+
       locateLoading.value = true;
       nearbyResults.value = [];
       nearbyRawData.value = null;
+
       try {
-        const center = await getCoords(input);
+        const center = await getCoordsByMode(input, locateForm.apiMode);
         if (!center) {
           locateForm.resolvedCoords = '';
+          ElementPlus.ElMessage.warning('中心点解析失败');
           return;
         }
+
         const centerPoint = new window.BMapGL.Point(center.lng, center.lat);
         locateForm.resolvedCoords = `${center.lng.toFixed(6)}, ${center.lat.toFixed(6)}`;
+
         if (!locateForm.nearbyKeyword.trim()) {
           renderNearbyItems(centerPoint, []);
           return;
         }
-        if (locateForm.apiMode === 'server') {
+
+        if (locateForm.apiMode === 'google') {
+          const result = await nearbyByGoogle(centerPoint);
+          nearbyRawData.value = result.raw;
+          if (result.raw && result.raw.status !== 'OK' && result.raw.status !== 'ZERO_RESULTS') {
+            throw new Error(result.raw.status || 'Unknown');
+          }
+          nearbyResults.value = result.items;
+        } else if (locateForm.apiMode === 'server') {
+          if (!serverAk.value) {
+            ElementPlus.ElMessage.warning('附近搜索需要先配置服务端 AK');
+            return;
+          }
+
           const apiPath = mapScope.value === 'international' ? 'place_abroad/v1/search' : 'place/v2/search';
-          const res = await MapUtils.jsonp(`https://api.map.baidu.com/${apiPath}?query=${encodeURIComponent(locateForm.nearbyKeyword)}&location=${center.lat},${center.lng}&radius=${locateForm.radius || 2000}&output=json&ak=${serverAk.value}`);
+          const res = await MapUtils.jsonp(
+            `https://api.map.baidu.com/${apiPath}?query=${encodeURIComponent(locateForm.nearbyKeyword)}&location=${center.lat},${center.lng}&radius=${locateForm.radius || 2000}&output=json&ak=${serverAk.value}`
+          );
           nearbyRawData.value = res;
-          nearbyResults.value = res && res.status === 0 ? (res.results || []).map((item) => buildPointItem(item.name, item.address, item.location.lng, item.location.lat, item)) : [];
+          nearbyResults.value = res && res.status === 0
+            ? (res.results || []).map((item) => buildPointItem(item.name, item.address, item.location.lng, item.location.lat, item))
+            : [];
         } else {
           nearbyResults.value = await nearbyByFrontend(centerPoint);
         }
+
         renderNearbyItems(centerPoint, nearbyResults.value);
       } catch (error) {
         console.error(error);
         locateForm.resolvedCoords = '';
+        nearbyResults.value = [];
+        nearbyRawData.value = null;
+        ElementPlus.ElMessage.error(`附近搜索失败: ${error.message}`);
       } finally {
         locateLoading.value = false;
       }
@@ -361,32 +546,39 @@ const app = createApp({
 
     const parseBaiduRouteDetail = (res, mode) => {
       if (!res || res.status !== 0 || !res.result || !res.result.routes) return null;
+
       return res.result.routes.map((route, idx) => ({
         index: idx + 1,
         distance: MapUtils.formatDistance(route.distance),
         duration: MapUtils.formatDuration(route.duration),
         steps: mode === 'transit'
-          ? (route.steps || []).flatMap((group, groupIndex) => (Array.isArray(group) ? group : [group]).map((segment, segmentIndex) => ({
+          ? (route.steps || []).flatMap((group, groupIndex) => (
+            (Array.isArray(group) ? group : [group]).map((segment, segmentIndex) => ({
               index: groupIndex * 10 + segmentIndex + 1,
-              instruction: segment.vehicle && segment.vehicle.name ? `乘坐 ${segment.vehicle.name}` : MapUtils.stripHtml(segment.instruction || '步行'),
+              instruction: segment.vehicle && segment.vehicle.name
+                ? `乘坐 ${segment.vehicle.name}`
+                : MapUtils.stripHtml(segment.instruction || '步行'),
               distance: segment.distance ? MapUtils.formatDistance(segment.distance) : '',
               duration: segment.duration ? MapUtils.formatDuration(segment.duration) : '',
               vehicleName: segment.vehicle && segment.vehicle.name ? segment.vehicle.name : ''
-            })))
-          : (route.steps || []).map((step, stepIndex) => ({
-              index: stepIndex + 1,
-              instruction: MapUtils.stripHtml(step.instruction || ''),
-              distance: step.distance ? MapUtils.formatDistance(step.distance) : '',
-              duration: step.duration ? MapUtils.formatDuration(step.duration) : ''
             }))
+          ))
+          : (route.steps || []).map((step, stepIndex) => ({
+            index: stepIndex + 1,
+            instruction: MapUtils.stripHtml(step.instruction || ''),
+            distance: step.distance ? MapUtils.formatDistance(step.distance) : '',
+            duration: step.duration ? MapUtils.formatDuration(step.duration) : ''
+          }))
       }));
     };
 
     const parseGoogleDirectionsDetail = (res) => {
       if (!res || !Array.isArray(res.routes)) return null;
+
       return res.routes.map((route, idx) => {
         const leg = route.legs && route.legs[0];
         if (!leg) return null;
+
         return {
           index: idx + 1,
           distance: leg.distance ? leg.distance.text : 'Unknown',
@@ -396,7 +588,9 @@ const app = createApp({
             instruction: MapUtils.stripHtml(step.html_instructions || ''),
             distance: step.distance ? step.distance.text : '',
             duration: step.duration ? step.duration.text : '',
-            vehicleName: step.transit_details && step.transit_details.line ? (step.transit_details.line.short_name || step.transit_details.line.name || '') : ''
+            vehicleName: step.transit_details && step.transit_details.line
+              ? (step.transit_details.line.short_name || step.transit_details.line.name || '')
+              : ''
           }))
         };
       }).filter(Boolean);
@@ -408,6 +602,7 @@ const app = createApp({
         routes: (res.routes || []).map((route) => {
           const leg = route.legs && route.legs[0];
           if (!leg) return null;
+
           if (routeForm.travelMode === 'transit') {
             return {
               distance: leg.distance ? leg.distance.value : 0,
@@ -426,7 +621,9 @@ const app = createApp({
                 };
                 if (step.transit_details) {
                   segment.vehicle = {
-                    name: step.transit_details.line ? (step.transit_details.line.short_name || step.transit_details.line.name || '') : '',
+                    name: step.transit_details.line
+                      ? (step.transit_details.line.short_name || step.transit_details.line.name || '')
+                      : '',
                     start_name: step.transit_details.departure_stop ? step.transit_details.departure_stop.name : '',
                     end_name: step.transit_details.arrival_stop ? step.transit_details.arrival_stop.name : '',
                     stop_num: step.transit_details.num_stops || 0
@@ -436,6 +633,7 @@ const app = createApp({
               })
             };
           }
+
           return {
             distance: leg.distance ? leg.distance.value : 0,
             duration: leg.duration ? leg.duration.value : 0,
@@ -453,16 +651,17 @@ const app = createApp({
       }
     });
 
-    const getGoogleRouteConfig = () => {
-      const keys = MapUtils.loadConfigList('google_map_api_keys');
-      if (keys.length === 0) return null;
-      return { apiKey: keys[0], proxyBaseUrl: localStorage.getItem('google_map_proxy_base') || DEFAULT_GOOGLE_PROXY_BASE };
-    };
-
     const calcGoogleRouteForBaidu = async (origin, destination) => {
-      const config = getGoogleRouteConfig();
+      const config = getGoogleConfig();
       if (!config) throw new Error('Google config missing');
-      const modeMap = { driving: 'driving', transit: 'transit', walking: 'walking', riding: 'bicycling' };
+
+      const modeMap = {
+        driving: 'driving',
+        transit: 'transit',
+        walking: 'walking',
+        riding: 'bicycling'
+      };
+
       const url = `${String(config.proxyBaseUrl).replace(/\/+$/, '')}/directions/json?${new URLSearchParams({
         origin: `${origin.lat},${origin.lng}`,
         destination: `${destination.lat},${destination.lng}`,
@@ -470,29 +669,46 @@ const app = createApp({
         alternatives: 'true',
         key: config.apiKey
       })}`;
+
       const raw = await fetch(url).then((response) => response.json());
-      if (!(raw && raw.status === 'OK' && Array.isArray(raw.routes) && raw.routes.length > 0)) throw new Error(raw.status || 'Unknown');
+      if (!(raw && raw.status === 'OK' && Array.isArray(raw.routes) && raw.routes.length > 0)) {
+        throw new Error(raw.status || 'Unknown');
+      }
+
       const converted = convertGoogleRouteToBaidu(raw);
       routeResults.value = { provider: 'google', raw, converted };
       routeDetailInfo.value = parseGoogleDirectionsDetail(raw);
+
       if (window.BaiduRouteDrawer) {
-        window.BaiduRouteDrawer.drawServerRoute(mapInstance, converted, routeForm.travelMode, { startName: '起', endName: '终', showRouteEndpoints: true });
+        window.BaiduRouteDrawer.drawServerRoute(mapInstance, converted, routeForm.travelMode, {
+          startName: '起',
+          endName: '终',
+          showRouteEndpoints: true
+        });
       }
     };
 
     const calcRoute = async () => {
       if (!routeForm.start || !routeForm.end) return;
+
       routeLoading.value = true;
       routeDetailInfo.value = null;
       routeResults.value = null;
+
       const origin = await getCoords(routeForm.start);
       const destination = await getCoords(routeForm.end);
       if (!origin || !destination) {
         routeLoading.value = false;
         return;
       }
-      routeForm.startCoords = MapUtils.parseCoords(routeForm.start) ? '' : `${origin.lng.toFixed(6)}, ${origin.lat.toFixed(6)}`;
-      routeForm.endCoords = MapUtils.parseCoords(routeForm.end) ? '' : `${destination.lng.toFixed(6)}, ${destination.lat.toFixed(6)}`;
+
+      routeForm.startCoords = MapUtils.parseCoords(routeForm.start)
+        ? ''
+        : `${origin.lng.toFixed(6)}, ${origin.lat.toFixed(6)}`;
+      routeForm.endCoords = MapUtils.parseCoords(routeForm.end)
+        ? ''
+        : `${destination.lng.toFixed(6)}, ${destination.lat.toFixed(6)}`;
+
       clearDrawings();
 
       if (routeForm.apiMode === 'google') {
@@ -509,12 +725,25 @@ const app = createApp({
 
       if (routeForm.apiMode === 'server') {
         try {
+          if (!serverAk.value) {
+            ElementPlus.ElMessage.warning('请先配置服务端 AK');
+            return;
+          }
+
           const base = mapScope.value === 'international' ? 'direction_abroad/v1' : 'directionlite/v1';
-          const res = await MapUtils.jsonp(`https://api.map.baidu.com/${base}/${routeForm.travelMode}?output=json&ak=${serverAk.value}&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}`);
+          const res = await MapUtils.jsonp(
+            `https://api.map.baidu.com/${base}/${routeForm.travelMode}?output=json&ak=${serverAk.value}&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}`
+          );
           routeResults.value = res;
           if (res && res.status === 0) {
             routeDetailInfo.value = parseBaiduRouteDetail(res, routeForm.travelMode);
-            if (window.BaiduRouteDrawer) window.BaiduRouteDrawer.drawServerRoute(mapInstance, res, routeForm.travelMode, { startName: '起', endName: '终', showRouteEndpoints: true });
+            if (window.BaiduRouteDrawer) {
+              window.BaiduRouteDrawer.drawServerRoute(mapInstance, res, routeForm.travelMode, {
+                startName: '起',
+                endName: '终',
+                showRouteEndpoints: true
+              });
+            }
           }
         } finally {
           routeLoading.value = false;
@@ -532,6 +761,7 @@ const app = createApp({
               routeDetailInfo.value = null;
               return;
             }
+
             if (routeForm.travelMode === 'transit') {
               const detail = [];
               const count = result.getNumPlans ? result.getNumPlans() : 0;
@@ -551,37 +781,40 @@ const app = createApp({
                 });
               }
               routeDetailInfo.value = detail;
-            } else {
-              const plan = result.getPlan ? result.getPlan(0) : null;
-              if (!plan) return;
-              const detail = {
-                index: 1,
-                distance: plan.getDistance ? MapUtils.formatDistance(plan.getDistance(false)) : 'Unknown',
-                duration: plan.getDuration ? MapUtils.formatDuration(plan.getDuration(false)) : 'Unknown',
-                steps: []
-              };
-              const routeCount = plan.getNumRoutes ? plan.getNumRoutes() : 1;
-              for (let r = 0; r < routeCount; r += 1) {
-                const routeObject = plan.getRoute ? plan.getRoute(r) : null;
-                if (routeObject && routeObject.getNumSteps) {
-                  for (let s = 0; s < routeObject.getNumSteps(); s += 1) {
-                    const step = routeObject.getStep(s);
-                    detail.steps.push({
-                      index: detail.steps.length + 1,
-                      instruction: MapUtils.stripHtml(step.getDescription ? step.getDescription(true) : ''),
-                      distance: step.getDistance ? MapUtils.formatDistance(step.getDistance(false)) : '',
-                      duration: ''
-                    });
-                  }
-                }
-              }
-              routeDetailInfo.value = [detail];
+              return;
             }
+
+            const plan = result.getPlan ? result.getPlan(0) : null;
+            if (!plan) return;
+
+            const detail = {
+              index: 1,
+              distance: plan.getDistance ? MapUtils.formatDistance(plan.getDistance(false)) : 'Unknown',
+              duration: plan.getDuration ? MapUtils.formatDuration(plan.getDuration(false)) : 'Unknown',
+              steps: []
+            };
+
+            const routeCount = plan.getNumRoutes ? plan.getNumRoutes() : 1;
+            for (let routeIndex = 0; routeIndex < routeCount; routeIndex += 1) {
+              const routeObject = plan.getRoute ? plan.getRoute(routeIndex) : null;
+              if (!routeObject || !routeObject.getNumSteps) continue;
+              for (let stepIndex = 0; stepIndex < routeObject.getNumSteps(); stepIndex += 1) {
+                const step = routeObject.getStep(stepIndex);
+                detail.steps.push({
+                  index: detail.steps.length + 1,
+                  instruction: MapUtils.stripHtml(step.getDescription ? step.getDescription(true) : ''),
+                  distance: step.getDistance ? MapUtils.formatDistance(step.getDistance(false)) : '',
+                  duration: ''
+                });
+              }
+            }
+            routeDetailInfo.value = [detail];
           } catch (error) {
             console.warn('提取 WebGL 路线详情失败:', error);
           }
         }
       };
+
       if (routeForm.travelMode === 'driving') routeInstance = new window.BMapGL.DrivingRoute(mapInstance, opts);
       if (routeForm.travelMode === 'transit') routeInstance = new window.BMapGL.TransitRoute(mapInstance, opts);
       if (routeForm.travelMode === 'walking') routeInstance = new window.BMapGL.WalkingRoute(mapInstance, opts);
@@ -590,7 +823,11 @@ const app = createApp({
         ElementPlus.ElMessage.warning('WebGL 模式暂不支持骑行');
         return;
       }
-      routeInstance.search(new window.BMapGL.Point(origin.lng, origin.lat), new window.BMapGL.Point(destination.lng, destination.lat));
+
+      routeInstance.search(
+        new window.BMapGL.Point(origin.lng, origin.lat),
+        new window.BMapGL.Point(destination.lng, destination.lat)
+      );
     };
 
     onMounted(() => {
@@ -611,6 +848,7 @@ const app = createApp({
       mapReady,
       mapScope,
       hasGoogleRouteProvider,
+      hasGooglePlaceProvider,
       mapLoading,
       searchLoading,
       routeLoading,
@@ -643,3 +881,5 @@ const app = createApp({
 
 app.use(ElementPlus);
 app.mount('#app');
+
+

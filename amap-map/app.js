@@ -1,4 +1,14 @@
-const { createApp, ref, onMounted, reactive, markRaw, computed } = Vue;
+/* global AMap */
+import { createApp, ref, onMounted, reactive, markRaw, computed } from 'vue';
+import ElementPlus from 'element-plus';
+import 'element-plus/dist/index.css';
+import { MapUtils } from '../shared/utils.js';
+import '../shared/i18n.js';
+import './route-drawer.js';
+
+if (typeof window !== 'undefined') {
+  window.ElementPlus = ElementPlus;
+}
 
 const app = createApp({
   setup() {

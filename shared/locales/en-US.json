@@ -1,0 +1,51 @@
+{
+  "common": {
+    "langLabel": "Lang",
+    "copyJsonButton": "Copy JSON",
+    "copyJsonSuccess": "Copied to clipboard",
+    "copyJsonError": "Copy failed, please copy manually"
+  },
+  "home": {
+    "title": "Map Web API Playground",
+    "subtitle": "Unified testing across map providers for domestic and international scenarios",
+    "footer": "CITSGBT Map API Test Platform",
+    "providers": {
+      "baidu": {
+        "name": "Baidu Maps",
+        "desc": "Baidu Maps API<br/>Supports WebGL rendering and server APIs"
+      },
+      "google": {
+        "name": "Google Maps",
+        "desc": "Google Maps Platform<br/>Supports Places, Directions, and Geocoding"
+      },
+      "amap": {
+        "name": "Amap",
+        "desc": "Amap Web JS API<br/>Supports frontend rendering and server APIs"
+      }
+    }
+  },
+  "nav": {
+    "home": "Home",
+    "homeTitle": "Back to Home",
+    "baidu": "Baidu Maps",
+    "baiduTitle": "Switch to Baidu Maps",
+    "google": "Google Maps",
+    "googleTitle": "Switch to Google Maps",
+    "amap": "Amap",
+    "amapTitle": "Switch to Amap"
+  },
+  "pages": {
+    "baidu": {
+      "title": "Baidu Maps Web API Playground",
+      "overlay": "Configure Baidu Map AK and load the map first"
+    },
+    "google": {
+      "title": "Google Maps API Playground",
+      "overlay": "Configure Google Maps API Key and load the map first"
+    },
+    "amap": {
+      "title": "Amap Web API Playground",
+      "overlay": "Configure Amap AK and load the map first"
+    }
+  }
+}

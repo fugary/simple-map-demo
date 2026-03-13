@@ -1,6 +1,13 @@
-const { createApp, ref, onMounted, reactive, markRaw, computed } = Vue;
+import { createApp, ref, onMounted, reactive, markRaw, computed } from 'vue';
+import ElementPlus from 'element-plus';
+import 'element-plus/dist/index.css';
+import { MapUtils } from '../shared/utils.js';
+import '../shared/i18n.js';
 
 const DEFAULT_PROXY_BASE = 'https://mock-dev.citsgbt.com/mock/3471f5ba61824bfea6efb264d70e235d';
+if (typeof window !== 'undefined') {
+  window.ElementPlus = ElementPlus;
+}
 
 const app = createApp({
   setup() {

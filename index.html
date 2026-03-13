@@ -4,9 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>地图 Web API 测试平台</title>
-  <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
-  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-  <script src="https://unpkg.com/element-plus"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
@@ -173,9 +170,6 @@
       <div class="portal-footer">CITSGBT Map API Test Platform</div>
     </div>
   </div>
-  <script src="shared/i18n.js"></script>
-  <script>
-    Vue.createApp({}).use(ElementPlus).mount('#app');
-  </script>
+  <script type="module" src="./shared/home.js"></script>
 </body>
 </html>
