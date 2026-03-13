@@ -101,28 +101,24 @@ const app = createApp({
       document.body.appendChild(script);
     };
 
-    const initMap = () => {
+    const initMap = async () => {
       try {
-        const defaultCenter = { lat: 39.915, lng: 116.404 };
+        let defaultCenter = { lat: 39.915, lng: 116.404 };
+
+        // If user specified a region, geocode it and center before init
+        if (globalRegion.value) {
+            const pt = await getCoords(globalRegion.value);
+            if (pt) {
+                defaultCenter = { lat: pt.lat, lng: pt.lng };
+            }
+        }
+
         mapInstance = markRaw(new google.maps.Map(document.getElementById('map-container'), {
           center: defaultCenter,
           zoom: 11,
           mapTypeControl: true,
           streetViewControl: false
         }));
-
-        // If user specified a region, geocode it and center
-        if (globalRegion.value) {
-          const geocoder = new google.maps.Geocoder();
-          geocoder.geocode({ address: globalRegion.value }, (results, status) => {
-            if (status === 'OK' && results[0]) {
-              mapInstance.setCenter(results[0].geometry.location);
-              if (results[0].geometry.viewport) {
-                mapInstance.fitBounds(results[0].geometry.viewport);
-              }
-            }
-          });
-        }
 
         mapReady.value = true;
         ElementPlus.ElMessage.success('Google Maps 加载成功');

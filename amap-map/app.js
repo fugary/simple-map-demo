@@ -4,6 +4,7 @@ const app = createApp({
   setup() {
     const mapLanguage = () =>
       window.AppI18n && window.AppI18n.getLang() === 'en' ? 'en' : 'zh_cn';
+    const AMAP_SCRIPT_ID = 'simple-map-demo-amap-sdk';
 
     const browserAkList = ref([]);
     const browserAk = ref('');
@@ -75,6 +76,33 @@ const app = createApp({
       if (regionList.value.length > 0) globalRegion.value = regionList.value[0];
     };
 
+    const resetMapContainer = () => {
+      const container = document.getElementById('map-container');
+      if (container) {
+        container.innerHTML = '';
+      }
+    };
+
+    const destroyAmapInstance = () => {
+      if (mapInstance && typeof mapInstance.destroy === 'function') {
+        mapInstance.destroy();
+      }
+      mapInstance = null;
+      mapReady.value = false;
+      resetMapContainer();
+    };
+
+    const unloadAmapSdk = () => {
+      destroyAmapInstance();
+      const existingScript = document.getElementById(AMAP_SCRIPT_ID);
+      if (existingScript) {
+        existingScript.remove();
+      }
+      delete window.initAmapCallback;
+      delete window.AMap;
+      delete window.__simpleMapAmapLang;
+    };
+
     const loadAmap = () => {
       if (!browserAk.value && !serverAk.value) {
         ElementPlus.ElMessage.warning('至少配置一个 AK 以继续');
@@ -97,7 +125,14 @@ const app = createApp({
         return;
       }
 
+      const desiredLang = mapLanguage();
+      if (window.AMap && window.__simpleMapAmapLang !== desiredLang) {
+        unloadAmapSdk();
+      }
+
       if (window.AMap && window.AMap.Map) {
+        window.__simpleMapAmapLang = desiredLang;
+        destroyAmapInstance();
         initMap();
         return;
       }
@@ -109,12 +144,14 @@ const app = createApp({
       }
 
       window.initAmapCallback = () => {
+        window.__simpleMapAmapLang = desiredLang;
         initMap();
       };
 
       const script = document.createElement('script');
+      script.id = AMAP_SCRIPT_ID;
       script.type = 'text/javascript';
-      script.src = `https://webapi.amap.com/maps?v=2.0&key=${browserAk.value}&lang=${mapLanguage()}&plugin=AMap.PlaceSearch,AMap.Driving,AMap.Transfer,AMap.Walking,AMap.Riding,AMap.Geocoder,AMap.ToolBar,AMap.Scale&callback=initAmapCallback`;
+      script.src = `https://webapi.amap.com/maps?v=1.4.15&key=${browserAk.value}&lang=${desiredLang}&plugin=AMap.PlaceSearch,AMap.Driving,AMap.Transfer,AMap.Walking,AMap.Riding,AMap.Geocoder,AMap.ToolBar,AMap.Scale&callback=initAmapCallback&_=${Date.now()}`;
       script.onerror = () => {
         mapLoading.value = false;
         ElementPlus.ElMessage.error('高德地图引擎加载失败，请检查 AK/SecurityCode 或网络！');
@@ -131,17 +168,32 @@ const app = createApp({
         }
     };
 
-    const initMap = () => {
+    const initMap = async () => {
       try {
+        destroyAmapInstance();
+        let centerPt = [116.397428, 39.90923]; // Default Beijing
+        const region = (globalRegion.value || '').trim();
+        
+        if (region && region !== '全国') {
+            // First attempt to get coords for the region to avoid flashes
+            // We use the AMap.Geocoder right away if it's available.
+            const pt = await getCoords(region);
+            if (pt) {
+                centerPt = [pt.lng, pt.lat];
+            }
+        }
+
         mapInstance = markRaw(new AMap.Map('map-container', {
             zoom: 11,
-            center: [116.397428, 39.90923] // Default Beijing
+            center: centerPt,
+            lang: mapLanguage()
         }));
+
+        console.log('locale', mapLanguage())
         
         mapInstance.addControl(new AMap.Scale());  
         mapInstance.addControl(new AMap.ToolBar());
 
-        const region = (globalRegion.value || '').trim();
         if (region && region !== '全国') {
             mapInstance.setCity(region);
         }
@@ -564,6 +616,11 @@ const app = createApp({
 
     onMounted(() => {
       initConfig();
+      window.addEventListener('app-language-change', () => {
+        if (browserAk.value && (window.AMap || mapInstance)) {
+          loadAmap();
+        }
+      });
     });
 
     return {

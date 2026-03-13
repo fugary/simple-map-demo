@@ -4,6 +4,7 @@ const app = createApp({
   setup() {
     const mapLanguage = () =>
       window.AppI18n && window.AppI18n.getLang() === 'en' ? 'en' : 'zh-CN';
+    const BAIDU_SCRIPT_ID = 'simple-map-demo-baidu-sdk';
 
     const browserAkList = ref([]);
     const browserAk = ref('');
@@ -73,6 +74,31 @@ const app = createApp({
 
     };
 
+    const resetMapContainer = () => {
+      const container = document.getElementById('map-container');
+      if (container) {
+        container.innerHTML = '';
+      }
+    };
+
+    const destroyBaiduInstance = () => {
+      mapInstance = null;
+      mapReady.value = false;
+      resetMapContainer();
+    };
+
+    const unloadBaiduSdk = () => {
+      destroyBaiduInstance();
+      const existingScript = document.getElementById(BAIDU_SCRIPT_ID);
+      if (existingScript) {
+        existingScript.remove();
+      }
+      delete window.initBaiduMapCallback;
+      delete window.BMapGL;
+      delete window.BMapGLLib;
+      delete window.__simpleMapBaiduLang;
+    };
+
     const loadBaiduMap = () => {
       if (!browserAk.value && !serverAk.value) {
         ElementPlus.ElMessage.warning('至少配置一个 AK 以继续');
@@ -91,18 +117,27 @@ const app = createApp({
         return;
       }
 
+      const desiredLang = mapLanguage();
+      if (window.BMapGL && window.__simpleMapBaiduLang !== desiredLang) {
+        unloadBaiduSdk();
+      }
+
       if (window.BMapGL) {
+        window.__simpleMapBaiduLang = desiredLang;
+        destroyBaiduInstance();
         initMap();
         return;
       }
 
       window.initBaiduMapCallback = () => {
+        window.__simpleMapBaiduLang = desiredLang;
         initMap();
       };
 
       const script = document.createElement('script');
+      script.id = BAIDU_SCRIPT_ID;
       script.type = 'text/javascript';
-      script.src = `https://api.map.baidu.com/api?v=1.0&type=webgl&ak=${browserAk.value}&language=${mapLanguage()}&callback=initBaiduMapCallback`;
+      script.src = `https://api.map.baidu.com/api?v=1.0&type=webgl&ak=${browserAk.value}&language=${desiredLang}&callback=initBaiduMapCallback&_=${Date.now()}`;
       script.onerror = () => {
         mapLoading.value = false;
         ElementPlus.ElMessage.error('百度地图引擎加载失败，请检查 AK 或网络！');
@@ -115,21 +150,27 @@ const app = createApp({
       return lng >= 73.5 && lng <= 135.1 && lat >= 3.8 && lat <= 53.6;
     };
 
-    const initMap = () => {
+    const initMap = async () => {
       try {
+        destroyBaiduInstance();
+        let centerPt = new BMapGL.Point(116.404, 39.915);
+        const region = (globalRegion.value || '').trim();
+        
+        if (region && region !== '全国') {
+            const pt = await getCoords(region);
+            if (pt) {
+                centerPt = new BMapGL.Point(pt.lng, pt.lat);
+            }
+        }
+
         mapInstance = markRaw(new BMapGL.Map('map-container', {
           displayOptions: {
             language: mapLanguage() === 'en' ? 'en' : 'zh'
           }
         }));
         
-        const region = (globalRegion.value || '').trim();
-        // 如果有指定城市默认立即定位到该城市字符串进行初始化，否则 fallback 为北京坐标
-        if (region && region !== '全国') {
-            mapInstance.centerAndZoom(region, 12);
-        } else {
-            mapInstance.centerAndZoom(new BMapGL.Point(116.404, 39.915), 11);
-        }
+        mapInstance.centerAndZoom(centerPt, 12);
+
         
         mapInstance.enableScrollWheelZoom(true);
         mapReady.value = true;
@@ -681,6 +722,11 @@ const app = createApp({
 
     onMounted(() => {
       initConfig();
+      window.addEventListener('app-language-change', () => {
+        if (browserAk.value && (window.BMapGL || mapInstance)) {
+          loadBaiduMap();
+        }
+      });
     });
 
     return {
