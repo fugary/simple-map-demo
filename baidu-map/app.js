@@ -791,12 +791,9 @@ const app = createApp({
         riding: 'bicycling'
       };
 
-      const routeOriginGoogle = MapUtils.baiduToGoogleCoords(origin.lng, origin.lat);
-      const routeDestGoogle = MapUtils.baiduToGoogleCoords(destination.lng, destination.lat);
-
       const url = `${String(config.proxyBaseUrl).replace(/\/+$/, '')}/directions/json?${new URLSearchParams({
-        origin: `${routeOriginGoogle.lat},${routeOriginGoogle.lng}`,
-        destination: `${routeDestGoogle.lat},${routeDestGoogle.lng}`,
+        origin: `${origin.lat},${origin.lng}`,
+        destination: `${destination.lat},${destination.lng}`,
         mode: modeMap[routeForm.travelMode] || 'driving',
         alternatives: 'true',
         key: config.apiKey
@@ -827,6 +824,34 @@ const app = createApp({
       routeDetailInfo.value = null;
       routeResults.value = null;
 
+      clearDrawings();
+
+      if (routeForm.apiMode === 'google') {
+        try {
+          const originalOrigin = await resolveGoogleCoordsRaw(routeForm.start);
+          const originalDestination = await resolveGoogleCoordsRaw(routeForm.end);
+          if (!originalOrigin || !originalDestination) {
+            routeLoading.value = false;
+            ElementPlus.ElMessage.error('无法解析 Google 路线起终点');
+            return;
+          }
+
+          const originBaidu = MapUtils.googleToBaiduCoords(originalOrigin.lng, originalOrigin.lat);
+          const destinationBaidu = MapUtils.googleToBaiduCoords(originalDestination.lng, originalDestination.lat);
+
+          routeForm.startCoords = `G: ${originalOrigin.lng.toFixed(6)}, ${originalOrigin.lat.toFixed(6)} | B: ${originBaidu.lng.toFixed(6)}, ${originBaidu.lat.toFixed(6)}`;
+          routeForm.endCoords = `G: ${originalDestination.lng.toFixed(6)}, ${originalDestination.lat.toFixed(6)} | B: ${destinationBaidu.lng.toFixed(6)}, ${destinationBaidu.lat.toFixed(6)}`;
+
+          await calcGoogleRouteForBaidu(originalOrigin, originalDestination);
+        } catch (error) {
+          console.error(error);
+          ElementPlus.ElMessage.error(`Google 路线数据转换失败: ${error.message}`);
+        } finally {
+          routeLoading.value = false;
+        }
+        return;
+      }
+
       const origin = await getCoords(routeForm.start);
       const destination = await getCoords(routeForm.end);
       if (!origin || !destination) {
@@ -840,27 +865,6 @@ const app = createApp({
       routeForm.endCoords = MapUtils.parseCoords(routeForm.end)
         ? ''
         : `百度: ${destination.lng.toFixed(6)}, ${destination.lat.toFixed(6)}`;
-
-      clearDrawings();
-
-      if (routeForm.apiMode === 'google') {
-        try {
-          const originalOrigin = await resolveGoogleCoordsRaw(routeForm.start);
-          const originalDestination = await resolveGoogleCoordsRaw(routeForm.end);
-          if (originalOrigin && originalDestination) {
-            routeForm.startCoords = `G: ${originalOrigin.lng.toFixed(6)}, ${originalOrigin.lat.toFixed(6)} | B: ${origin.lng.toFixed(6)}, ${origin.lat.toFixed(6)}`;
-            routeForm.endCoords = `G: ${originalDestination.lng.toFixed(6)}, ${originalDestination.lat.toFixed(6)} | B: ${destination.lng.toFixed(6)}, ${destination.lat.toFixed(6)}`;
-          }
-
-          await calcGoogleRouteForBaidu(origin, destination);
-        } catch (error) {
-          console.error(error);
-          ElementPlus.ElMessage.error(`Google 路线数据转换失败: ${error.message}`);
-        } finally {
-          routeLoading.value = false;
-        }
-        return;
-      }
 
       if (routeForm.apiMode === 'server') {
         try {
