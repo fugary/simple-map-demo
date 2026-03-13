@@ -87,17 +87,7 @@ const app = createApp({
       resetMapContainer();
     };
 
-    const unloadBaiduSdk = () => {
-      destroyBaiduInstance();
-      const existingScript = document.getElementById(BAIDU_SCRIPT_ID);
-      if (existingScript) {
-        existingScript.remove();
-      }
-      delete window.initBaiduMapCallback;
-      delete window.BMapGL;
-      delete window.BMapGLLib;
-      delete window.__simpleMapBaiduLang;
-    };
+
 
     const loadBaiduMap = () => {
       if (!browserAk.value && !serverAk.value) {
@@ -118,9 +108,6 @@ const app = createApp({
       }
 
       const desiredLang = mapLanguage();
-      if (window.BMapGL && window.__simpleMapBaiduLang !== desiredLang) {
-        unloadBaiduSdk();
-      }
 
       if (window.BMapGL) {
         window.__simpleMapBaiduLang = desiredLang;

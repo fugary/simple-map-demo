@@ -92,16 +92,7 @@ const app = createApp({
       resetMapContainer();
     };
 
-    const unloadAmapSdk = () => {
-      destroyAmapInstance();
-      const existingScript = document.getElementById(AMAP_SCRIPT_ID);
-      if (existingScript) {
-        existingScript.remove();
-      }
-      delete window.initAmapCallback;
-      delete window.AMap;
-      delete window.__simpleMapAmapLang;
-    };
+
 
     const loadAmap = () => {
       if (!browserAk.value && !serverAk.value) {
@@ -126,9 +117,6 @@ const app = createApp({
       }
 
       const desiredLang = mapLanguage();
-      if (window.AMap && window.__simpleMapAmapLang !== desiredLang) {
-        unloadAmapSdk();
-      }
 
       if (window.AMap && window.AMap.Map) {
         window.__simpleMapAmapLang = desiredLang;
