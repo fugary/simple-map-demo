@@ -4,6 +4,11 @@ const DEFAULT_PROXY_BASE = 'https://mock-dev.citsgbt.com/mock/3471f5ba61824bfea6
 
 const app = createApp({
   setup() {
+    const mapLanguage = () =>
+      window.AppI18n && window.AppI18n.getLang() === 'en' ? 'en' : 'zh-CN';
+    const mapRegion = () =>
+      window.AppI18n && window.AppI18n.getLang() === 'en' ? 'US' : 'CN';
+
     const apiKeyList = ref([]);
     const apiKey = ref('');
     const regionList = ref([]);
@@ -89,7 +94,7 @@ const app = createApp({
 
       const script = document.createElement('script');
       script.type = 'text/javascript';
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey.value}&libraries=places&callback=initGoogleMapCallback`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey.value}&libraries=places&language=${mapLanguage()}&region=${mapRegion()}&callback=initGoogleMapCallback`;
       script.onerror = () => {
         ElementPlus.ElMessage.error('Google Maps 加载失败，请检查 API Key 或网络！');
       };

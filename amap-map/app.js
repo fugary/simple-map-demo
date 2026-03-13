@@ -2,6 +2,9 @@ const { createApp, ref, onMounted, reactive, markRaw, computed } = Vue;
 
 const app = createApp({
   setup() {
+    const mapLanguage = () =>
+      window.AppI18n && window.AppI18n.getLang() === 'en' ? 'en' : 'zh_cn';
+
     const browserAkList = ref([]);
     const browserAk = ref('');
     const serverAkList = ref([]);
@@ -111,7 +114,7 @@ const app = createApp({
 
       const script = document.createElement('script');
       script.type = 'text/javascript';
-      script.src = `https://webapi.amap.com/maps?v=2.0&key=${browserAk.value}&plugin=AMap.PlaceSearch,AMap.Driving,AMap.Transfer,AMap.Walking,AMap.Riding,AMap.Geocoder,AMap.ToolBar,AMap.Scale&callback=initAmapCallback`;
+      script.src = `https://webapi.amap.com/maps?v=2.0&key=${browserAk.value}&lang=${mapLanguage()}&plugin=AMap.PlaceSearch,AMap.Driving,AMap.Transfer,AMap.Walking,AMap.Riding,AMap.Geocoder,AMap.ToolBar,AMap.Scale&callback=initAmapCallback`;
       script.onerror = () => {
         mapLoading.value = false;
         ElementPlus.ElMessage.error('高德地图引擎加载失败，请检查 AK/SecurityCode 或网络！');

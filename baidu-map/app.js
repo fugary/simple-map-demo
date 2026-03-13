@@ -2,6 +2,9 @@ const { createApp, ref, onMounted, reactive, markRaw, computed } = Vue;
 
 const app = createApp({
   setup() {
+    const mapLanguage = () =>
+      window.AppI18n && window.AppI18n.getLang() === 'en' ? 'en' : 'zh-CN';
+
     const browserAkList = ref([]);
     const browserAk = ref('');
     const serverAkList = ref([]);
@@ -99,7 +102,7 @@ const app = createApp({
 
       const script = document.createElement('script');
       script.type = 'text/javascript';
-      script.src = `https://api.map.baidu.com/api?v=1.0&type=webgl&ak=${browserAk.value}&callback=initBaiduMapCallback`;
+      script.src = `https://api.map.baidu.com/api?v=1.0&type=webgl&ak=${browserAk.value}&language=${mapLanguage()}&callback=initBaiduMapCallback`;
       script.onerror = () => {
         mapLoading.value = false;
         ElementPlus.ElMessage.error('百度地图引擎加载失败，请检查 AK 或网络！');
@@ -114,7 +117,11 @@ const app = createApp({
 
     const initMap = () => {
       try {
-        mapInstance = markRaw(new BMapGL.Map('map-container'));
+        mapInstance = markRaw(new BMapGL.Map('map-container', {
+          displayOptions: {
+            language: mapLanguage() === 'en' ? 'en' : 'zh'
+          }
+        }));
         
         const region = (globalRegion.value || '').trim();
         // 如果有指定城市默认立即定位到该城市字符串进行初始化，否则 fallback 为北京坐标
