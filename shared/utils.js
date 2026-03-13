@@ -212,18 +212,39 @@ const bd09ToGcj02 = (lng, lat) => {
 };
 
 const wgs84ToBd09 = (lng, lat) => {
+  if (isOutOfChina(lng, lat)) return { lng, lat };
   const gcj = wgs84ToGcj02(lng, lat);
   return gcj02ToBd09(gcj.lng, gcj.lat);
 };
 
 const bd09ToWgs84 = (lng, lat) => {
+  if (isOutOfChina(lng, lat)) return { lng, lat };
   const gcj = bd09ToGcj02(lng, lat);
   return gcj02ToWgs84(gcj.lng, gcj.lat);
 };
 
-const googleToBaiduCoords = (lng, lat) => wgs84ToBd09(Number(lng), Number(lat));
+const normalizeGoogleCoordSource = (sourceType = 'auto', lng, lat) => {
+  if (sourceType === 'gcj02' || sourceType === 'wgs84') return sourceType;
+  return isOutOfChina(Number(lng), Number(lat)) ? 'wgs84' : 'gcj02';
+};
 
-const baiduToGoogleCoords = (lng, lat) => bd09ToWgs84(Number(lng), Number(lat));
+const googleToBaiduCoords = (lng, lat, sourceType = 'auto') => {
+  const finalLng = Number(lng);
+  const finalLat = Number(lat);
+  const normalizedSource = normalizeGoogleCoordSource(sourceType, finalLng, finalLat);
+  return normalizedSource === 'gcj02'
+    ? gcj02ToBd09(finalLng, finalLat)
+    : wgs84ToBd09(finalLng, finalLat);
+};
+
+const baiduToGoogleCoords = (lng, lat, targetType = 'auto') => {
+  const finalLng = Number(lng);
+  const finalLat = Number(lat);
+  const normalizedTarget = normalizeGoogleCoordSource(targetType, finalLng, finalLat);
+  return normalizedTarget === 'gcj02'
+    ? bd09ToGcj02(finalLng, finalLat)
+    : bd09ToWgs84(finalLng, finalLat);
+};
 
 const buildBaiduPointData = (title, address, lng, lat, raw = null) => {
   const coords = googleToBaiduCoords(lng, lat);
@@ -252,6 +273,7 @@ export const MapUtils = {
   bd09ToGcj02,
   wgs84ToBd09,
   bd09ToWgs84,
+  normalizeGoogleCoordSource,
   googleToBaiduCoords,
   baiduToGoogleCoords,
   buildBaiduPointData

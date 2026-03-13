@@ -1,4 +1,4 @@
-﻿/* global fetch, URLSearchParams */
+/* global fetch, URLSearchParams */
 import { createApp, ref, onMounted, reactive, markRaw, computed } from 'vue';
 import ElementPlus from 'element-plus';
 import 'element-plus/dist/index.css';
@@ -146,10 +146,89 @@ const app = createApp({
       raw
     });
 
+    const formatGoogleDisplayAddress = ({ originalAddress, baiduAddress, googleLocation, baiduLocation }) => {
+      const lines = [originalAddress || 'Unknown'];
+      if (baiduAddress) lines.push(`百度地址: ${baiduAddress}`);
+      if (googleLocation) {
+        lines.push(`Google 坐标: ${Number(googleLocation.lng).toFixed(6)},${Number(googleLocation.lat).toFixed(6)}`);
+      }
+      if (baiduLocation) {
+        lines.push(`百度坐标: ${Number(baiduLocation.lng).toFixed(6)},${Number(baiduLocation.lat).toFixed(6)}`);
+      }
+      return lines.join(' | ');
+    };
+
+    const formatGoogleCoordCompare = ({ googleLocation, baiduLocation }) => {
+      const parts = [];
+      if (googleLocation) {
+        parts.push(`G: ${Number(googleLocation.lng).toFixed(6)},${Number(googleLocation.lat).toFixed(6)}`);
+      }
+      if (baiduLocation) {
+        parts.push(`B: ${Number(baiduLocation.lng).toFixed(6)},${Number(baiduLocation.lat).toFixed(6)}`);
+      }
+      return parts.join(' | ');
+    };
+
     const buildGooglePointItem = (item) => {
       if (!item || !item.location) return null;
       const coords = MapUtils.googleToBaiduCoords(item.location.lng, item.location.lat);
-      return buildPointItem(item.title, item.address, coords.lng, coords.lat, item.raw);
+      return {
+        title: item.title || 'Unnamed',
+        address: formatGoogleDisplayAddress({
+          originalAddress: item.address,
+          googleLocation: item.location,
+          baiduLocation: coords
+        }),
+        coordCompare: formatGoogleCoordCompare({
+          googleLocation: item.location,
+          baiduLocation: coords
+        }),
+        originalAddress: item.address || 'Unknown',
+        baiduAddress: '',
+        googleLocation: item.location,
+        point: new window.BMapGL.Point(Number(coords.lng), Number(coords.lat)),
+        raw: item.raw
+      };
+    };
+
+    const reverseGeocodeBaidu = (point) => new Promise((resolve) => {
+      if (!window.BMapGL || !window.BMapGL.Geocoder) {
+        resolve(null);
+        return;
+      }
+      const geocoder = new window.BMapGL.Geocoder();
+      geocoder.getLocation(point, (rs) => {
+        if (rs && rs.address) {
+          resolve(rs.address);
+        } else {
+          resolve(null);
+        }
+      });
+    });
+
+    const enrichWithBaiduAddress = async (items) => {
+      await Promise.all(items.map(async (item) => {
+        if (item && item.point) {
+          try {
+            const baiduAddr = await reverseGeocodeBaidu(item.point);
+            if (baiduAddr) {
+              item.baiduAddress = baiduAddr;
+              item.address = formatGoogleDisplayAddress({
+                originalAddress: item.originalAddress,
+                baiduAddress: baiduAddr,
+                googleLocation: item.googleLocation,
+                baiduLocation: item.point
+              });
+              item.coordCompare = formatGoogleCoordCompare({
+                googleLocation: item.googleLocation,
+                baiduLocation: item.point
+              });
+            }
+          } catch {
+            // ignore
+          }
+        }
+      }));
     };
 
     const renderNearbyItems = (centerPoint, items) => {
@@ -276,6 +355,21 @@ const app = createApp({
       }
     });
 
+    const resolveGoogleCoordsRaw = async (addressOrCoords) => {
+      const parsed = MapUtils.parseCoords(addressOrCoords);
+      if (parsed) return parsed;
+
+      const value = String(addressOrCoords || '').trim();
+      if (!value) return null;
+
+      const config = getGoogleConfig();
+      if (!config) return null;
+
+      const result = await googleGeocode({ address: value, config });
+      if (!result.location) return null;
+      return result.location;
+    };
+
     const resolveGoogleCoords = async (addressOrCoords) => {
       const parsed = MapUtils.parseCoords(addressOrCoords);
       if (parsed) return parsed;
@@ -310,17 +404,27 @@ const app = createApp({
       try {
         destroyMapInstance();
 
-        let center = new window.BMapGL.Point(116.404, 39.915);
-        const region = String(globalRegion.value || '').trim();
-        if (region && region !== '全国') {
-          const point = await getCoords(region);
-          if (point) center = new window.BMapGL.Point(point.lng, point.lat);
-        }
-
         mapInstance = markRaw(new window.BMapGL.Map('map-container', {
           displayOptions: { language: mapLanguage() === 'en' ? 'en' : 'zh' }
         }));
-        mapInstance.centerAndZoom(center, 12);
+
+        let center = new window.BMapGL.Point(116.404, 39.915);
+        let zoom = 12;
+
+        const region = String(globalRegion.value || '').trim();
+        if (region && region !== '全国') {
+          const point = await localSearchGeo(region);
+          if (point) {
+            center = new window.BMapGL.Point(point.lng, point.lat);
+          } else {
+            const fallbackPoint = await getCoords(region);
+            if (fallbackPoint) center = new window.BMapGL.Point(fallbackPoint.lng, fallbackPoint.lat);
+          }
+        } else {
+          zoom = 5;
+        }
+
+        mapInstance.centerAndZoom(center, zoom);
         mapInstance.enableScrollWheelZoom(true);
         mapInstance.addControl(new window.BMapGL.ScaleControl());
         mapInstance.addControl(new window.BMapGL.ZoomControl());
@@ -360,7 +464,9 @@ const app = createApp({
           if (result.raw && result.raw.status !== 'OK' && result.raw.status !== 'ZERO_RESULTS') {
             throw new Error(result.raw.status || 'Unknown');
           }
-          searchResults.value = result.items.map(buildGooglePointItem).filter(Boolean);
+          const items = result.items.map(buildGooglePointItem).filter(Boolean);
+          await enrichWithBaiduAddress(items);
+          searchResults.value = items;
           return;
         }
 
@@ -460,13 +566,12 @@ const app = createApp({
       local.searchNearby(locateForm.nearbyKeyword, centerPoint, locateForm.radius || 2000);
     });
 
-    const nearbyByGoogle = async (centerPoint) => {
+    const nearbyByGoogle = async (googleCenter) => {
       const config = getGoogleConfig();
       if (!config) {
         throw new Error('Google API Key is missing');
       }
 
-      const googleCenter = MapUtils.baiduToGoogleCoords(centerPoint.lng, centerPoint.lat);
       const result = await googleNearbySearch({
         location: { lat: googleCenter.lat, lng: googleCenter.lng },
         keyword: locateForm.nearbyKeyword,
@@ -492,15 +597,38 @@ const app = createApp({
       nearbyRawData.value = null;
 
       try {
-        const center = await getCoordsByMode(input, locateForm.apiMode);
-        if (!center) {
-          locateForm.resolvedCoords = '';
-          ElementPlus.ElMessage.warning('中心点解析失败');
-          return;
-        }
+        let centerPoint = null;
+        let originalGoogleCenter = null;
 
-        const centerPoint = new window.BMapGL.Point(center.lng, center.lat);
-        locateForm.resolvedCoords = `${center.lng.toFixed(6)}, ${center.lat.toFixed(6)}`;
+        if (locateForm.apiMode === 'google') {
+          const parsed = MapUtils.parseCoords(input);
+          if (parsed) {
+            originalGoogleCenter = parsed;
+          } else {
+            const config = getGoogleConfig();
+            const geoRes = await googleGeocode({ address: input, config });
+            if (geoRes && geoRes.location) {
+              originalGoogleCenter = geoRes.location;
+            }
+          }
+          if (!originalGoogleCenter) {
+            locateForm.resolvedCoords = '';
+            ElementPlus.ElMessage.warning('Google中心点解析失败');
+            return;
+          }
+          const bdCoords = MapUtils.googleToBaiduCoords(originalGoogleCenter.lng, originalGoogleCenter.lat);
+          centerPoint = new window.BMapGL.Point(bdCoords.lng, bdCoords.lat);
+          locateForm.resolvedCoords = `${bdCoords.lng.toFixed(6)}, ${bdCoords.lat.toFixed(6)}`;
+        } else {
+          const center = await getCoordsByMode(input, locateForm.apiMode);
+          if (!center) {
+            locateForm.resolvedCoords = '';
+            ElementPlus.ElMessage.warning('中心点解析失败');
+            return;
+          }
+          centerPoint = new window.BMapGL.Point(center.lng, center.lat);
+          locateForm.resolvedCoords = `${center.lng.toFixed(6)}, ${center.lat.toFixed(6)}`;
+        }
 
         if (!locateForm.nearbyKeyword.trim()) {
           renderNearbyItems(centerPoint, []);
@@ -508,11 +636,12 @@ const app = createApp({
         }
 
         if (locateForm.apiMode === 'google') {
-          const result = await nearbyByGoogle(centerPoint);
+          const result = await nearbyByGoogle(originalGoogleCenter);
           nearbyRawData.value = result.raw;
           if (result.raw && result.raw.status !== 'OK' && result.raw.status !== 'ZERO_RESULTS') {
             throw new Error(result.raw.status || 'Unknown');
           }
+          await enrichWithBaiduAddress(result.items);
           nearbyResults.value = result.items;
         } else if (locateForm.apiMode === 'server') {
           if (!serverAk.value) {
@@ -522,7 +651,7 @@ const app = createApp({
 
           const apiPath = mapScope.value === 'international' ? 'place_abroad/v1/search' : 'place/v2/search';
           const res = await MapUtils.jsonp(
-            `https://api.map.baidu.com/${apiPath}?query=${encodeURIComponent(locateForm.nearbyKeyword)}&location=${center.lat},${center.lng}&radius=${locateForm.radius || 2000}&output=json&ak=${serverAk.value}`
+            `https://api.map.baidu.com/${apiPath}?query=${encodeURIComponent(locateForm.nearbyKeyword)}&location=${centerPoint.lat},${centerPoint.lng}&radius=${locateForm.radius || 2000}&output=json&ak=${serverAk.value}`
           );
           nearbyRawData.value = res;
           nearbyResults.value = res && res.status === 0
@@ -609,7 +738,7 @@ const app = createApp({
               duration: leg.duration ? leg.duration.value : 0,
               steps: (leg.steps || []).map((step) => {
                 const path = MapUtils.decodeGooglePolyline(step.polyline && step.polyline.points)
-                  .map((point) => MapUtils.wgs84ToBd09(point.lng, point.lat))
+                  .map((point) => MapUtils.googleToBaiduCoords(point.lng, point.lat))
                   .map((point) => `${point.lng},${point.lat}`)
                   .join(';');
                 const segment = {
@@ -639,7 +768,7 @@ const app = createApp({
             duration: leg.duration ? leg.duration.value : 0,
             steps: (leg.steps || []).map((step) => ({
               path: MapUtils.decodeGooglePolyline(step.polyline && step.polyline.points)
-                .map((point) => MapUtils.wgs84ToBd09(point.lng, point.lat))
+                .map((point) => MapUtils.googleToBaiduCoords(point.lng, point.lat))
                 .map((point) => `${point.lng},${point.lat}`)
                 .join(';'),
               instruction: MapUtils.stripHtml(step.html_instructions || ''),
@@ -662,9 +791,12 @@ const app = createApp({
         riding: 'bicycling'
       };
 
+      const routeOriginGoogle = MapUtils.baiduToGoogleCoords(origin.lng, origin.lat);
+      const routeDestGoogle = MapUtils.baiduToGoogleCoords(destination.lng, destination.lat);
+
       const url = `${String(config.proxyBaseUrl).replace(/\/+$/, '')}/directions/json?${new URLSearchParams({
-        origin: `${origin.lat},${origin.lng}`,
-        destination: `${destination.lat},${destination.lng}`,
+        origin: `${routeOriginGoogle.lat},${routeOriginGoogle.lng}`,
+        destination: `${routeDestGoogle.lat},${routeDestGoogle.lng}`,
         mode: modeMap[routeForm.travelMode] || 'driving',
         alternatives: 'true',
         key: config.apiKey
@@ -704,15 +836,22 @@ const app = createApp({
 
       routeForm.startCoords = MapUtils.parseCoords(routeForm.start)
         ? ''
-        : `${origin.lng.toFixed(6)}, ${origin.lat.toFixed(6)}`;
+        : `百度: ${origin.lng.toFixed(6)}, ${origin.lat.toFixed(6)}`;
       routeForm.endCoords = MapUtils.parseCoords(routeForm.end)
         ? ''
-        : `${destination.lng.toFixed(6)}, ${destination.lat.toFixed(6)}`;
+        : `百度: ${destination.lng.toFixed(6)}, ${destination.lat.toFixed(6)}`;
 
       clearDrawings();
 
       if (routeForm.apiMode === 'google') {
         try {
+          const originalOrigin = await resolveGoogleCoordsRaw(routeForm.start);
+          const originalDestination = await resolveGoogleCoordsRaw(routeForm.end);
+          if (originalOrigin && originalDestination) {
+            routeForm.startCoords = `G: ${originalOrigin.lng.toFixed(6)}, ${originalOrigin.lat.toFixed(6)} | B: ${origin.lng.toFixed(6)}, ${origin.lat.toFixed(6)}`;
+            routeForm.endCoords = `G: ${originalDestination.lng.toFixed(6)}, ${originalDestination.lat.toFixed(6)} | B: ${destination.lng.toFixed(6)}, ${destination.lat.toFixed(6)}`;
+          }
+
           await calcGoogleRouteForBaidu(origin, destination);
         } catch (error) {
           console.error(error);
@@ -751,6 +890,15 @@ const app = createApp({
         return;
       }
 
+      if (mapScope.value === 'international') {
+        routeLoading.value = false;
+        ElementPlus.ElMessage.warning('百度 WebGL 前端引擎不支持国际路线规划，请切换为“服务端”或“Google”模式');
+        if (window.BaiduRouteDrawer) {
+          window.BaiduRouteDrawer.drawRouteEndpoints(mapInstance, origin, destination);
+        }
+        return;
+      }
+
       let routeInstance = null;
       const opts = {
         renderOptions: { map: mapInstance, autoViewport: true },
@@ -759,6 +907,10 @@ const app = createApp({
           try {
             if (!routeInstance || routeInstance.getStatus() !== window.BMAP_STATUS_SUCCESS) {
               routeDetailInfo.value = null;
+              ElementPlus.ElMessage.warning('未能找到有效路线');
+              if (window.BaiduRouteDrawer) {
+                window.BaiduRouteDrawer.drawRouteEndpoints(mapInstance, origin, destination);
+              }
               return;
             }
 

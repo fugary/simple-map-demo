@@ -251,9 +251,9 @@
                     <el-form-item label="搜索半径">
                       <el-input-number v-model="locateForm.radius" :min="100" :max="50000" :step="100" style="width: 100%" />
                     </el-form-item>
-                    <el-button type="primary" :loading="locateLoading" @click="locateInput" style="width: 100%; margin-bottom: 20px;">解析中心并搜索附近</el-button>
-                    <div style="text-align: center; margin-top: 15px;">
-                      <p style="color: #606266; font-size: 13px; margin-bottom: 5px;">解析出的中心点经纬度</p>
+                    <el-button type="primary" :loading="locateLoading" @click="locateInput" style="width: 100%; margin-bottom: 12px;">解析中心并搜索附近</el-button>
+                    <div class="location-resolve-card">
+                      <p>解析出的中心点经纬度</p>
                       <el-tag size="large" type="success" effect="plain" v-if="locateForm.resolvedCoords">
                          {{ locateForm.resolvedCoords }}
                       </el-tag>
