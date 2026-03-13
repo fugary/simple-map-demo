@@ -4,16 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Google Maps 测试页面</title>
-  
-  <!-- Element Plus CSS -->
+
   <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
-  
-  <!-- Shared CSS -->
   <link rel="stylesheet" href="../shared/common.css">
-  <!-- Custom CSS -->
   <link rel="stylesheet" href="style.css">
 
-  <!-- Vue 3 and Element Plus JS -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <script src="https://unpkg.com/element-plus"></script>
   <script src="https://unpkg.com/@element-plus/icons-vue"></script>
@@ -21,7 +16,6 @@
 <body>
   <div id="app" v-cloak>
     <el-container class="layout-container">
-      <!-- Sidebar Control Panel -->
       <el-aside width="450px" class="sidebar">
         <el-config-provider size="small">
           <div class="sidebar-header">
@@ -41,8 +35,6 @@
 
           <div class="sidebar-content">
             <el-tabs v-model="activeTab" class="func-tabs" type="border-card">
-              
-              <!-- TAB 1: 基础配置与控制 -->
               <el-tab-pane label="配置面板" name="config">
                 <el-card class="box-card" shadow="never">
                   <el-form label-width="90px" size="small">
@@ -52,20 +44,19 @@
                       </el-select>
                     </el-form-item>
                     <el-form-item label="默认区域">
-                      <el-select v-model="globalRegion" placeholder="例如：北京 或 New York" allow-create filterable clearable style="width: 100%">
+                      <el-select v-model="globalRegion" placeholder="例如：北京 / New York" allow-create filterable clearable style="width: 100%">
                         <el-option v-for="item in regionList" :key="item" :label="item" :value="item" />
                       </el-select>
                     </el-form-item>
                     <el-form-item label="代理地址">
-                      <el-input v-model="proxyBaseUrl" placeholder="服务端接口代理 Base URL" clearable />
+                      <el-input v-model="proxyBaseUrl" placeholder="服务端代理 Base URL" clearable />
                     </el-form-item>
                   </el-form>
                   <el-button type="primary" @click="loadGoogleMap" style="width: 100%; margin-top: 10px;">加载地图并保存配置</el-button>
-                  <p class="help-text" style="font-size: 11px; color: #909399; margin-top: 10px;">提示：服务端模式通过代理地址访问 Google API（替代 maps.googleapis.com/maps/api），不需要翻墙。</p>
+                  <p class="help-text" style="font-size: 11px; color: #909399; margin-top: 10px;">提示：服务端模式通过代理访问 Google Web API。</p>
                 </el-card>
               </el-tab-pane>
 
-              <!-- TAB 2: 地点搜索 -->
               <el-tab-pane label="地点搜索" name="search" :disabled="!mapReady">
                 <el-card class="box-card box-card-flex" shadow="never">
                   <el-form :model="searchForm" label-width="60px" @submit.prevent style="display: flex; flex-direction: column; height: 100%;">
@@ -87,8 +78,8 @@
                     </el-row>
                     <el-row :gutter="10">
                       <el-col :span="24">
-                        <el-form-item label="关键字">
-                          <el-input v-model="searchForm.keyword" placeholder="如：Times Square" @keyup.enter="doSearch" />
+                        <el-form-item label="关键词">
+                          <el-input v-model="searchForm.keyword" placeholder="例如：Times Square" @keyup.enter="doSearch" />
                         </el-form-item>
                       </el-col>
                     </el-row>
@@ -103,11 +94,8 @@
                         </div>
                       </el-col>
                     </el-row>
-                    
-                    <!-- Search Results -->
+
                     <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column;" v-if="searchResults.length > 0 || serverSearchRawData">
-                      
-                      <!-- Server mode: Tab display -->
                       <el-tabs v-if="searchForm.apiMode === 'server' && serverSearchRawData" v-model="searchResultTab" type="border-card" class="result-tabs">
                         <el-tab-pane label="列表展示" name="list">
                           <el-table :data="searchResults" height="100%" style="width: 100%" @row-click="viewOnMap">
@@ -118,9 +106,7 @@
                         <el-tab-pane label="JSON 数据" name="json">
                           <div class="json-panel">
                             <div class="json-toolbar">
-                              <el-button size="small" type="primary" plain @click="copyJson(serverSearchRawData)">
-                                📋 复制 JSON
-                              </el-button>
+                              <el-button size="small" type="primary" plain @click="copyJson(serverSearchRawData)">复制 JSON</el-button>
                             </div>
                             <el-scrollbar class="json-scrollbar">
                               <pre class="json-code" v-html="searchJsonHtml"></pre>
@@ -129,7 +115,6 @@
                         </el-tab-pane>
                       </el-tabs>
 
-                      <!-- Frontend mode: simple table -->
                       <template v-else-if="searchResults.length > 0">
                         <el-table :data="searchResults" height="100%" style="width: 100%" @row-click="viewOnMap">
                           <el-table-column prop="title" label="名称" width="130" show-overflow-tooltip></el-table-column>
@@ -141,10 +126,15 @@
                 </el-card>
               </el-tab-pane>
 
-              <!-- TAB 3: 路线规划 -->
               <el-tab-pane label="路线规划" name="route" :disabled="!mapReady">
                 <el-card class="box-card box-card-flex" shadow="never">
                   <el-form :model="routeForm" label-width="70px" @submit.prevent style="display: flex; flex-direction: column; height: 100%;">
+                    <el-form-item label="接口模式">
+                      <el-radio-group v-model="routeForm.apiMode">
+                        <el-radio label="frontend">前端 (DirectionsService)</el-radio>
+                        <el-radio label="server">服务端 (Directions API)</el-radio>
+                      </el-radio-group>
+                    </el-form-item>
                     <el-form-item label="起点">
                       <el-row :gutter="5" style="width: 100%">
                         <el-col :span="14"><el-input v-model="routeForm.start" placeholder="搜索地址或坐标" /></el-col>
@@ -168,11 +158,8 @@
 
                     <el-button type="primary" style="width: 100%; margin-bottom: 15px;" :loading="routeLoading" @click="calcRoute">开始规划</el-button>
 
-                    <!-- Route Detail Info -->
                     <div v-if="routeDetailInfo && routeDetailInfo.length > 0" style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
-
-                      <!-- Server mode: Tab display -->
-                      <el-tabs v-if="searchForm.apiMode === 'server' && routeResults" v-model="routeResultTab" type="border-card" class="result-tabs">
+                      <el-tabs v-if="routeForm.apiMode === 'server' && routeResults" v-model="routeResultTab" type="border-card" class="result-tabs">
                         <el-tab-pane label="路线详情" name="list">
                           <el-scrollbar class="route-detail-scrollbar">
                             <div v-for="route in routeDetailInfo" :key="route.index" class="route-summary-card">
@@ -197,7 +184,7 @@
                                     </div>
                                     <span class="step-text">{{ step.instruction }}</span>
                                     <span class="step-info" v-if="step.distance || step.duration">
-                                      {{ step.distance }}<template v-if="step.distance && step.duration"> · </template>{{ step.duration }}
+                                      {{ step.distance }}<template v-if="step.distance && step.duration"> / </template>{{ step.duration }}
                                     </span>
                                   </div>
                                 </el-timeline-item>
@@ -208,9 +195,7 @@
                         <el-tab-pane label="JSON 数据" name="json">
                           <div class="json-panel">
                             <div class="json-toolbar">
-                              <el-button size="small" type="primary" plain @click="copyJson(routeResults)">
-                                📋 复制 JSON
-                              </el-button>
+                              <el-button size="small" type="primary" plain @click="copyJson(routeResults)">复制 JSON</el-button>
                             </div>
                             <el-scrollbar class="json-scrollbar">
                               <pre class="json-code" v-html="routeJsonHtml"></pre>
@@ -219,7 +204,6 @@
                         </el-tab-pane>
                       </el-tabs>
 
-                      <!-- Frontend mode: direct display -->
                       <template v-else>
                         <el-scrollbar class="route-detail-scrollbar">
                           <div v-for="route in routeDetailInfo" :key="route.index" class="route-summary-card">
@@ -244,7 +228,7 @@
                                   </div>
                                   <span class="step-text">{{ step.instruction }}</span>
                                   <span class="step-info" v-if="step.distance || step.duration">
-                                    {{ step.distance }}<template v-if="step.distance && step.duration"> · </template>{{ step.duration }}
+                                    {{ step.distance }}<template v-if="step.distance && step.duration"> / </template>{{ step.duration }}
                                   </span>
                                 </div>
                               </el-timeline-item>
@@ -257,13 +241,28 @@
                 </el-card>
               </el-tab-pane>
 
-              <el-tab-pane label="坐标显示" name="locate" :disabled="!mapReady">
-                <el-card class="box-card" shadow="never">
-                  <el-form :model="locateForm" label-width="70px" @submit.prevent>
-                    <el-form-item label="查找定位">
+              <el-tab-pane label="附近搜索" name="locate" :disabled="!mapReady">
+                <el-card class="box-card box-card-flex" shadow="never">
+                  <el-form :model="locateForm" label-width="80px" @submit.prevent style="display: flex; flex-direction: column; height: 100%;">
+                    <el-form-item label="接口模式">
+                      <el-radio-group v-model="locateForm.apiMode">
+                        <el-radio label="frontend">前端 (Places)</el-radio>
+                        <el-radio label="server">服务端 (Nearby API)</el-radio>
+                      </el-radio-group>
+                    </el-form-item>
+                    <el-form-item label="中心点">
                       <el-input v-model="locateForm.input" placeholder="输入地址或 经度,纬度" clearable />
                     </el-form-item>
-                    <el-button type="primary" @click="locateInput" style="width: 100%; margin-bottom: 20px;">定位并在下方显示坐标</el-button>
+                    <el-form-item label="周边关键字">
+                      <el-input v-model="locateForm.nearbyKeyword" placeholder="可选：hotel / coffee / subway" clearable />
+                    </el-form-item>
+                    <el-form-item label="搜索半径">
+                      <el-input-number v-model="locateForm.radius" :min="100" :max="50000" :step="100" style="width: 100%" />
+                    </el-form-item>
+                    <el-form-item label="结果数量">
+                      <el-input-number v-model="locateForm.count" :min="1" :max="20" style="width: 100%" />
+                    </el-form-item>
+                    <el-button type="primary" :loading="locateLoading" @click="locateInput" style="width: 100%; margin-bottom: 20px;">解析中心并搜索附近</el-button>
                     <div style="text-align: center; margin-top: 15px;">
                       <p style="color: #606266; font-size: 13px; margin-bottom: 5px;">解析出的中心点经纬度</p>
                       <el-tag size="large" type="success" effect="plain" v-if="locateForm.resolvedCoords">
@@ -273,16 +272,42 @@
                          暂无定位数据
                       </el-tag>
                     </div>
+
+                    <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; margin-top: 16px;" v-if="nearbyResults.length > 0 || nearbyRawData">
+                      <el-tabs v-if="locateForm.apiMode === 'server' && nearbyRawData" v-model="locateResultTab" type="border-card" class="result-tabs">
+                        <el-tab-pane label="列表展示" name="list">
+                          <el-table :data="nearbyResults" height="100%" style="width: 100%" @row-click="viewNearbyOnMap">
+                            <el-table-column prop="title" label="名称" width="130" show-overflow-tooltip></el-table-column>
+                            <el-table-column prop="address" label="地点/坐标" show-overflow-tooltip></el-table-column>
+                          </el-table>
+                        </el-tab-pane>
+                        <el-tab-pane label="JSON 数据" name="json">
+                          <div class="json-panel">
+                            <div class="json-toolbar">
+                              <el-button size="small" type="primary" plain @click="copyJson(nearbyRawData)">复制 JSON</el-button>
+                            </div>
+                            <el-scrollbar class="json-scrollbar">
+                              <pre class="json-code" v-html="nearbyJsonHtml"></pre>
+                            </el-scrollbar>
+                          </div>
+                        </el-tab-pane>
+                      </el-tabs>
+
+                      <template v-else-if="nearbyResults.length > 0">
+                        <el-table :data="nearbyResults" height="100%" style="width: 100%" @row-click="viewNearbyOnMap">
+                          <el-table-column prop="title" label="名称" width="130" show-overflow-tooltip></el-table-column>
+                          <el-table-column prop="address" label="地点/坐标" show-overflow-tooltip></el-table-column>
+                        </el-table>
+                      </template>
+                    </div>
                   </el-form>
                 </el-card>
               </el-tab-pane>
-
             </el-tabs>
           </div>
         </el-config-provider>
       </el-aside>
 
-      <!-- Main Map Content -->
       <el-main class="main-content">
         <div id="map-container" class="map-container"></div>
         <div class="map-overlay" v-if="!mapReady">
@@ -291,11 +316,9 @@
       </el-main>
     </el-container>
   </div>
-  
-  <!-- Shared Utils -->
+
   <script src="../shared/utils.js"></script>
   <script src="../shared/i18n.js"></script>
-  <!-- App Logic -->
   <script src="app.js"></script>
 </body>
 </html>

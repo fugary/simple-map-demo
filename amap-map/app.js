@@ -16,11 +16,13 @@ const app = createApp({
     const mapReady = ref(false);
     const activeTab = ref('config');
     let mapInstance = null;
+    let routePlugin = null;
+    let infoWindow = null;
 
-    // Loading states
     const mapLoading = ref(false);
     const searchLoading = ref(false);
     const routeLoading = ref(false);
+    const locateLoading = ref(false);
 
     const searchForm = reactive({
       apiMode: 'jsapi',
@@ -31,13 +33,17 @@ const app = createApp({
     const serverSearchRawData = ref(null);
     const searchResultTab = ref('list');
 
-    // Locate Form
     const locateForm = reactive({
+      apiMode: 'jsapi',
       input: '',
-      resolvedCoords: ''
+      resolvedCoords: '',
+      nearbyKeyword: '',
+      radius: 2000
     });
+    const nearbyResults = ref([]);
+    const nearbyRawData = ref(null);
+    const locateResultTab = ref('list');
 
-    // Route Form
     const routeForm = reactive({
       apiMode: 'jsapi',
       travelMode: 'driving',
@@ -50,7 +56,6 @@ const app = createApp({
     const routeDetailInfo = ref(null);
     const routeResultTab = ref('list');
 
-    // Highlighted JSON computed properties
     const searchJsonHtml = computed(() => {
       if (!serverSearchRawData.value) return '';
       return MapUtils.highlightJson(JSON.stringify(serverSearchRawData.value, null, 2));
@@ -61,7 +66,11 @@ const app = createApp({
       return MapUtils.highlightJson(JSON.stringify(routeResults.value, null, 2));
     });
 
-    // Load config from localStorage
+    const nearbyJsonHtml = computed(() => {
+      if (!nearbyRawData.value) return '';
+      return MapUtils.highlightJson(JSON.stringify(nearbyRawData.value, null, 2));
+    });
+
     const initConfig = () => {
       browserAkList.value = MapUtils.loadConfigList('amap_map_browser_aks');
       if (browserAkList.value.length > 0) browserAk.value = browserAkList.value[0];
@@ -83,44 +92,105 @@ const app = createApp({
       }
     };
 
-    const destroyAmapInstance = () => {
+    const destroyMapInstance = () => {
       if (mapInstance && typeof mapInstance.destroy === 'function') {
         mapInstance.destroy();
       }
       mapInstance = null;
+      routePlugin = null;
       mapReady.value = false;
       resetMapContainer();
     };
 
+    const unloadAmapSdk = () => {
+      destroyMapInstance();
+      const script = document.getElementById(AMAP_SCRIPT_ID);
+      if (script) {
+        script.remove();
+      }
+      delete window.initAmapCallback;
+      delete window.AMap;
+      delete window.__simpleMapAmapLang;
+    };
 
+    const clearDrawings = () => {
+      if (!mapInstance) return;
+      mapInstance.clearMap();
+      if (window.AmapRouteDrawer) {
+        window.AmapRouteDrawer.clearRoute(mapInstance);
+      }
+      if (routePlugin && typeof routePlugin.clear === 'function') {
+        routePlugin.clear();
+      }
+    };
+
+    const ensureInfoWindow = () => {
+      if (!infoWindow) {
+        infoWindow = new AMap.InfoWindow({ offset: new AMap.Pixel(0, -30) });
+      }
+      return infoWindow;
+    };
+
+    const buildPointItem = (title, address, lng, lat, raw = null) => ({
+      title: title || 'Unnamed',
+      address: `${address || 'Unknown'} [${Number(lng).toFixed(6)},${Number(lat).toFixed(6)}]`,
+      point: [Number(lng), Number(lat)],
+      raw
+    });
+
+    const renderPointItems = (centerPoint, items) => {
+      if (!mapInstance) return;
+      clearDrawings();
+      const overlays = [];
+      if (centerPoint) {
+        overlays.push(new AMap.Marker({
+          position: centerPoint,
+          title: 'Center'
+        }));
+      }
+      items.forEach((item) => {
+        if (!item.point) return;
+        overlays.push(new AMap.Marker({
+          position: item.point,
+          title: item.title
+        }));
+      });
+      if (overlays.length > 0) {
+        mapInstance.add(overlays);
+        mapInstance.setFitView(overlays);
+      }
+    };
 
     const loadAmap = () => {
       if (!browserAk.value && !serverAk.value) {
-        ElementPlus.ElMessage.warning('至少配置一个 AK 以继续');
+        ElementPlus.ElMessage.warning('至少配置一个 AK 才能继续');
         return;
       }
-      
+
       mapLoading.value = true;
       MapUtils.saveConfigVal(browserAkList, browserAk.value, 'amap_map_browser_aks');
       MapUtils.saveConfigVal(serverAkList, serverAk.value, 'amap_map_server_aks');
       if (browserSecurityCode.value) {
-        let scList = MapUtils.loadConfigList('amap_map_browser_security_codes');
-        MapUtils.saveConfigVal(ref(scList), browserSecurityCode.value, 'amap_map_browser_security_codes');
+        const scList = ref(MapUtils.loadConfigList('amap_map_browser_security_codes'));
+        MapUtils.saveConfigVal(scList, browserSecurityCode.value, 'amap_map_browser_security_codes');
       }
       MapUtils.saveConfigVal(regionList, globalRegion.value, 'amap_map_regions');
-      
+
       if (!browserAk.value) {
         mapReady.value = true;
         mapLoading.value = false;
-        ElementPlus.ElMessage.info('未填浏览器端 AK，仅可测试 Server 服务端 API。');
+        ElementPlus.ElMessage.info('未填浏览器端 AK，仅可使用服务端模式相关功能');
         return;
       }
 
       const desiredLang = mapLanguage();
+      if (window.AMap && window.__simpleMapAmapLang !== desiredLang) {
+        unloadAmapSdk();
+      }
 
       if (window.AMap && window.AMap.Map) {
         window.__simpleMapAmapLang = desiredLang;
-        destroyAmapInstance();
+        destroyMapInstance();
         initMap();
         return;
       }
@@ -142,57 +212,93 @@ const app = createApp({
       script.src = `https://webapi.amap.com/maps?v=1.4.15&key=${browserAk.value}&lang=${desiredLang}&plugin=AMap.PlaceSearch,AMap.Driving,AMap.Transfer,AMap.Walking,AMap.Riding,AMap.Geocoder,AMap.ToolBar,AMap.Scale&callback=initAmapCallback&_=${Date.now()}`;
       script.onerror = () => {
         mapLoading.value = false;
-        ElementPlus.ElMessage.error('高德地图引擎加载失败，请检查 AK/SecurityCode 或网络！');
+        ElementPlus.ElMessage.error('高德地图引擎加载失败，请检查 AK/SecurityCode 或网络');
       };
       document.body.appendChild(script);
     };
 
-    let markers = []; // Maintain custom markers because PlaceSearch etc defaults might clash or we manual render
-    const clearDrawings = () => {
-        if (!mapInstance) return;
-        mapInstance.clearMap(); // clears all overlays
-        if (window.AmapRouteDrawer) {
-            window.AmapRouteDrawer.clearRoute(mapInstance);
+    const fallbackServerGeo = (address, resolve) => {
+      if (!serverAk.value) {
+        resolve(null);
+        return;
+      }
+      const cityCode = (globalRegion.value && globalRegion.value !== '全国') ? encodeURIComponent(globalRegion.value) : '';
+      MapUtils.jsonp(`https://restapi.amap.com/v3/geocode/geo?address=${encodeURIComponent(address)}&city=${cityCode}&output=json&key=${serverAk.value}`)
+        .then((res) => {
+          if (res && res.status === '1' && res.geocodes && res.geocodes.length > 0) {
+            const [lng, lat] = res.geocodes[0].location.split(',');
+            resolve({ lng: parseFloat(lng), lat: parseFloat(lat) });
+          } else {
+            resolve(null);
+          }
+        })
+        .catch(() => resolve(null));
+    };
+
+    const getCoords = (addressOrCoords) => {
+      return new Promise((resolve) => {
+        const parsed = MapUtils.parseCoords(addressOrCoords);
+        if (parsed) {
+          resolve(parsed);
+          return;
         }
+
+        const value = String(addressOrCoords || '').trim();
+        if (!value) {
+          resolve(null);
+          return;
+        }
+
+        if (window.AMap && window.AMap.Geocoder) {
+          const geocoder = new AMap.Geocoder({
+            city: globalRegion.value && globalRegion.value !== '全国' ? globalRegion.value : undefined
+          });
+          geocoder.getLocation(value, (status, result) => {
+            if (status === 'complete' && result.info === 'OK' && result.geocodes && result.geocodes.length > 0) {
+              resolve({
+                lng: result.geocodes[0].location.lng,
+                lat: result.geocodes[0].location.lat
+              });
+            } else {
+              fallbackServerGeo(value, resolve);
+            }
+          });
+        } else {
+          fallbackServerGeo(value, resolve);
+        }
+      });
     };
 
     const initMap = async () => {
       try {
-        destroyAmapInstance();
-        let centerPt = [116.397428, 39.90923]; // Default Beijing
-        const region = (globalRegion.value || '').trim();
-        
+        destroyMapInstance();
+        let centerPoint = [116.397428, 39.90923];
+        const region = String(globalRegion.value || '').trim();
         if (region && region !== '全国') {
-            // First attempt to get coords for the region to avoid flashes
-            // We use the AMap.Geocoder right away if it's available.
-            const pt = await getCoords(region);
-            if (pt) {
-                centerPt = [pt.lng, pt.lat];
-            }
+          const point = await getCoords(region);
+          if (point) {
+            centerPoint = [point.lng, point.lat];
+          }
         }
 
         mapInstance = markRaw(new AMap.Map('map-container', {
-            zoom: 11,
-            center: centerPt,
-            lang: mapLanguage()
+          zoom: 11,
+          center: centerPoint,
+          lang: mapLanguage()
         }));
-
-        console.log('locale', mapLanguage())
-        
-        mapInstance.addControl(new AMap.Scale());  
+        mapInstance.addControl(new AMap.Scale());
         mapInstance.addControl(new AMap.ToolBar());
-
         if (region && region !== '全国') {
-            mapInstance.setCity(region);
+          mapInstance.setCity(region);
         }
-        
+
         mapReady.value = true;
         mapLoading.value = false;
         ElementPlus.ElMessage.success('地图加载成功');
-      } catch (e) {
-        console.error('Map init error:', e);
+      } catch (error) {
+        console.error('Map init error:', error);
         mapLoading.value = false;
-        ElementPlus.ElMessage.error('地图初始化失败，请检查 AK/SecurityCode 是否合法并已授权该域名！');
+        ElementPlus.ElMessage.error('地图初始化失败，请检查 AK/SecurityCode 是否合法并已授权域名');
       }
     };
 
@@ -207,99 +313,85 @@ const app = createApp({
 
       if (searchForm.apiMode === 'server') {
         if (!serverAk.value) {
-          ElementPlus.ElMessage.warning('需要配置 服务端端侧 AK');
           searchLoading.value = false;
+          ElementPlus.ElMessage.warning('需要配置服务端 AK');
           return;
         }
+
         try {
           const cityCode = (globalRegion.value && globalRegion.value !== '全国') ? encodeURIComponent(globalRegion.value) : '';
           const url = `https://restapi.amap.com/v3/place/text?keywords=${encodeURIComponent(searchForm.keyword)}&city=${cityCode}&offset=${searchForm.count}&page=1&output=json&key=${serverAk.value}`;
           const res = await MapUtils.jsonp(url);
           serverSearchRawData.value = res;
           if (res && res.status === '1') {
-            searchResults.value = (res.pois || []).map(r => {
-                let lng = 0, lat = 0;
-                if (r.location && typeof r.location === 'string') {
-                    const parts = r.location.split(',');
-                    lng = parseFloat(parts[0]);
-                    lat = parseFloat(parts[1]);
-                }
-                return {
-                    title: r.name || '无名称',
-                    address: `${r.address || r.adname || '无具体地址'} [坐标: ${r.location || '未知'}]`,
-                    point: lng ? [lng, lat] : null
-                };
-            });
-            ElementPlus.ElMessage.success(`服务端 API 请求成功 (共找到 ${searchResults.value.length} 条记录)`);
+            searchResults.value = (res.pois || [])
+              .filter((poi) => poi.location)
+              .map((poi) => {
+                const [lng, lat] = poi.location.split(',');
+                return buildPointItem(poi.name, poi.address || poi.adname, lng, lat, poi);
+              });
+            ElementPlus.ElMessage.success(`服务端 API 找到 ${searchResults.value.length} 条结果`);
           } else {
-            ElementPlus.ElMessage.error(`服务端 API 返回错误: ${res.info || 'Unknown error'}`);
             searchResults.value = [];
+            ElementPlus.ElMessage.error(`服务端搜索失败: ${res.info || 'Unknown'}`);
           }
-        } catch(e) {
-          console.error(e);
-          ElementPlus.ElMessage.error('服务端 API 请求失败');
+        } catch (error) {
+          console.error(error);
+          searchResults.value = [];
+          ElementPlus.ElMessage.error('服务端搜索请求失败');
         } finally {
           searchLoading.value = false;
         }
         return;
       }
 
-      // JS API Mode
       if (!mapReady.value || !mapInstance) {
         searchLoading.value = false;
         return;
       }
+
       serverSearchRawData.value = null;
       searchResults.value = [];
 
       try {
         const placeSearch = new AMap.PlaceSearch({
-            pageSize: searchForm.count || 10,
-            pageIndex: 1,
-            city: globalRegion.value && globalRegion.value !== '全国' ? globalRegion.value : undefined
+          pageSize: searchForm.count || 10,
+          pageIndex: 1,
+          city: globalRegion.value && globalRegion.value !== '全国' ? globalRegion.value : undefined
         });
 
         placeSearch.search(searchForm.keyword, (status, result) => {
-            searchLoading.value = false;
-            if (status === 'complete' && result.info === 'OK') {
-                const pois = result.poiList.pois;
-                searchResults.value = pois.map(p => ({
-                    title: p.name,
-                    address: `${p.address || p.adname || '无'} [坐标: ${p.location ? p.location.lng.toFixed(6)+','+p.location.lat.toFixed(6) : '未知'}]`,
-                    point: p.location ? [p.location.lng, p.location.lat] : null
-                }));
-            } else {
-                ElementPlus.ElMessage.info('未找到相关结果或查询失败 (' + status + ')');
-            }
+          searchLoading.value = false;
+          if (status === 'complete' && result.info === 'OK') {
+            searchResults.value = (result.poiList.pois || []).map((poi) =>
+              buildPointItem(poi.name, poi.address || poi.adname, poi.location.lng, poi.location.lat, poi)
+            );
+          } else {
+            searchResults.value = [];
+            ElementPlus.ElMessage.info(`未找到相关结果或查询失败 (${status})`);
+          }
         });
-      } catch (ex) {
-        console.error(ex);
+      } catch (error) {
+        console.error(error);
         searchLoading.value = false;
-        ElementPlus.ElMessage.error('前端检索异常');
+        ElementPlus.ElMessage.error('前端检索失败');
       }
     };
 
-    let infoWindow = null;
     const viewOnMap = (item) => {
-      if (mapInstance && item.point) {
-        clearDrawings();
-        mapInstance.setCenter(item.point);
-        const marker = new AMap.Marker({
-            position: item.point,
-            title: item.title
-        });
-        mapInstance.add(marker);
-        
-        if (!infoWindow) {
-            infoWindow = new AMap.InfoWindow({ offset: new AMap.Pixel(0, -30) });
-        }
-        infoWindow.setContent(`<strong>${item.title}</strong><br/>地址: ${item.address}`);
-        infoWindow.open(mapInstance, item.point);
-        
-        marker.on('click', () => {
-            infoWindow.open(mapInstance, item.point);
-        });
-      }
+      if (!mapInstance || !item || !item.point) return;
+      clearDrawings();
+      mapInstance.setCenter(item.point);
+      const marker = new AMap.Marker({
+        position: item.point,
+        title: item.title
+      });
+      mapInstance.add(marker);
+
+      const popup = ensureInfoWindow();
+      popup.setContent(`<strong>${item.title}</strong><br/>${item.address}`);
+      popup.open(mapInstance, item.point);
+      marker.on('click', () => popup.open(mapInstance, item.point));
     };
 
     const quickSearch = (keyword) => {
@@ -312,82 +404,83 @@ const app = createApp({
       doSearch();
     };
 
-    const locateInput = () => {
+    const locateInput = async () => {
       if (!mapReady.value || !mapInstance) return;
       const input = locateForm.input.trim();
       if (!input) return;
 
-      const coordsParsed = MapUtils.parseCoords(input);
-      if (coordsParsed) {
-        const pt = [coordsParsed.lng, coordsParsed.lat];
-        clearDrawings();
-        const marker = new AMap.Marker({ position: pt });
-        mapInstance.add(marker);
-        mapInstance.setCenter(pt);
-        mapInstance.setZoom(15);
-        locateForm.resolvedCoords = `${coordsParsed.lng.toFixed(6)}, ${coordsParsed.lat.toFixed(6)}`;
-        return;
-      }
+      locateLoading.value = true;
+      nearbyResults.value = [];
+      nearbyRawData.value = null;
 
-      // Use AMap.Geocoder
-      const geocoder = new AMap.Geocoder({
-          city: globalRegion.value && globalRegion.value !== '全国' ? globalRegion.value : undefined
-      });
-      geocoder.getLocation(input, (status, result) => {
-          if (status === 'complete' && result.info === 'OK') {
-              const loc = result.geocodes[0].location;
-              const pt = [loc.lng, loc.lat];
-              clearDrawings();
-              mapInstance.setCenter(pt);
-              mapInstance.setZoom(16);
-              mapInstance.add(new AMap.Marker({ position: pt }));
-              locateForm.resolvedCoords = `${loc.lng.toFixed(6)}, ${loc.lat.toFixed(6)}`;
-          } else {
-              ElementPlus.ElMessage.warning('未能解析该地址的坐标');
-              locateForm.resolvedCoords = '';
-          }
-      });
-    };
-
-    // Address resolution
-    const fallbackServerGeo = (address, resolve) => {
-      if (!serverAk.value) { resolve(null); return; }
-      const cityCode = (globalRegion.value && globalRegion.value !== '全国') ? encodeURIComponent(globalRegion.value) : '';
-      MapUtils.jsonp(`https://restapi.amap.com/v3/geocode/geo?address=${encodeURIComponent(address)}&city=${cityCode}&output=json&key=${serverAk.value}`).then(res => {
-        if (res && res.status === '1' && res.geocodes && res.geocodes.length > 0) {
-          const locStr = res.geocodes[0].location;
-          const parts = locStr.split(',');
-          resolve({ lng: parseFloat(parts[0]), lat: parseFloat(parts[1]) });
-        } else {
-          resolve(null);
-        }
-      }).catch(() => resolve(null));
-    };
-
-    const getCoords = (addressOrCoords) => {
-      return new Promise((resolve) => {
-        const coordsParsed = MapUtils.parseCoords(addressOrCoords);
-        if (coordsParsed) {
-          resolve(coordsParsed);
+      try {
+        const center = await getCoords(input);
+        if (!center) {
+          locateForm.resolvedCoords = '';
+          ElementPlus.ElMessage.warning('地址解析失败');
           return;
         }
-        
-        const str = (addressOrCoords || '').trim();
-        if (window.AMap && window.AMap.Geocoder) {
-          const geocoder = new AMap.Geocoder({
+
+        const centerPoint = [center.lng, center.lat];
+        locateForm.resolvedCoords = `${center.lng.toFixed(6)}, ${center.lat.toFixed(6)}`;
+
+        if (!locateForm.nearbyKeyword.trim()) {
+          renderPointItems(centerPoint, []);
+          return;
+        }
+
+        if (locateForm.apiMode === 'server') {
+          if (!serverAk.value) {
+            ElementPlus.ElMessage.warning('附近搜索需要配置服务端 AK');
+            return;
+          }
+
+          const cityCode = (globalRegion.value && globalRegion.value !== '全国') ? encodeURIComponent(globalRegion.value) : '';
+          const url = `https://restapi.amap.com/v3/place/around?location=${center.lng},${center.lat}&keywords=${encodeURIComponent(locateForm.nearbyKeyword)}&radius=${locateForm.radius || 2000}&offset=20&page=1&output=json&key=${serverAk.value}&city=${cityCode}`;
+          const res = await MapUtils.jsonp(url);
+          nearbyRawData.value = res;
+          if (res && res.status === '1') {
+            nearbyResults.value = (res.pois || [])
+              .filter((poi) => poi.location)
+              .map((poi) => {
+                const [lng, lat] = poi.location.split(',');
+                return buildPointItem(poi.name, poi.address || poi.adname, lng, lat, poi);
+              });
+          } else {
+            nearbyResults.value = [];
+            ElementPlus.ElMessage.warning(`附近搜索失败: ${res.info || 'Unknown'}`);
+          }
+        } else {
+          const placeSearch = new AMap.PlaceSearch({
+            pageSize: 20,
+            pageIndex: 1,
             city: globalRegion.value && globalRegion.value !== '全国' ? globalRegion.value : undefined
           });
-          geocoder.getLocation(str, (status, result) => {
-            if (status === 'complete' && result.info === 'OK' && result.geocodes && result.geocodes.length > 0) {
-               resolve({ lng: result.geocodes[0].location.lng, lat: result.geocodes[0].location.lat });
-            } else {
-               fallbackServerGeo(str, resolve);
-            }
+
+          const result = await new Promise((resolve, reject) => {
+            placeSearch.searchNearBy(locateForm.nearbyKeyword, centerPoint, locateForm.radius || 2000, (status, searchResult) => {
+              if (status === 'complete' && searchResult.info === 'OK') {
+                resolve(searchResult);
+              } else {
+                reject(new Error(status || 'Unknown'));
+              }
+            });
           });
-        } else {
-           fallbackServerGeo(str, resolve);
+
+          nearbyResults.value = ((result.poiList && result.poiList.pois) || []).map((poi) =>
+            buildPointItem(poi.name, poi.address || poi.adname, poi.location.lng, poi.location.lat, poi)
+          );
         }
-      });
+
+        renderPointItems(centerPoint, nearbyResults.value);
+      } catch (error) {
+        console.error(error);
+        locateForm.resolvedCoords = '';
+        nearbyResults.value = [];
+        ElementPlus.ElMessage.error(`附近搜索失败: ${error.message}`);
+      } finally {
+        locateLoading.value = false;
+      }
     };
 
     const parseServerRouteDetail = (res, travelMode) => {
@@ -399,46 +492,43 @@ const app = createApp({
         const detail = {
           index: idx + 1,
           distance: MapUtils.formatDistance(parseFloat(path.distance)),
-          duration: MapUtils.formatDuration(parseFloat(path.duration || path.time || path.cost || 0)),
+          duration: MapUtils.formatDuration(parseFloat(path.duration || path.time || 0)),
           steps: []
         };
 
         if (travelMode === 'transit' && path.segments) {
-          path.segments.forEach((seg, sIdx) => {
-             // Walking part
-             if (seg.walking && seg.walking.steps && seg.walking.steps.length > 0) {
-                 detail.steps.push({
-                     index: detail.steps.length + 1,
-                     instruction: `步行去搭乘公交/地铁`,
-                     distance: MapUtils.formatDistance(parseFloat(seg.walking.distance || 0)),
-                     duration: ''
-                 });
-             }
-             // Bus part
-             if (seg.bus && seg.bus.buslines && seg.bus.buslines.length > 0) {
-                 const busline = seg.bus.buslines[0];
-                 detail.steps.push({
-                     index: detail.steps.length + 1,
-                     instruction: `乘坐 ${busline.name}`,
-                     vehicleName: busline.type,
-                     distance: MapUtils.formatDistance(parseFloat(busline.distance || 0)),
-                     duration: ''
-                 });
-             }
+          path.segments.forEach((segment) => {
+            if (segment.walking && segment.walking.steps && segment.walking.steps.length > 0) {
+              detail.steps.push({
+                index: detail.steps.length + 1,
+                instruction: 'Walk to transit',
+                distance: MapUtils.formatDistance(parseFloat(segment.walking.distance || 0)),
+                duration: ''
+              });
+            }
+            if (segment.bus && segment.bus.buslines && segment.bus.buslines.length > 0) {
+              const busline = segment.bus.buslines[0];
+              detail.steps.push({
+                index: detail.steps.length + 1,
+                instruction: `Take ${busline.name}`,
+                vehicleName: busline.type,
+                distance: MapUtils.formatDistance(parseFloat(busline.distance || 0)),
+                duration: ''
+              });
+            }
           });
         } else if (path.steps) {
-          detail.steps = path.steps.map((step, i) => ({
-            index: i + 1,
-            instruction: (step.instruction || step.action || '向前行驶').replace(/<[^>]+>/g, ''),
-            distance: MapUtils.formatDistance(parseFloat(step.distance)),
+          detail.steps = path.steps.map((step, stepIndex) => ({
+            index: stepIndex + 1,
+            instruction: MapUtils.stripHtml(step.instruction || step.action || 'Go ahead'),
+            distance: MapUtils.formatDistance(parseFloat(step.distance || 0)),
             duration: MapUtils.formatDuration(parseFloat(step.duration || step.time || 0))
           }));
         }
+
         return detail;
       });
     };
-
-    let jsRoutePlugin = null; // Hold the instance to clear it
 
     const calcRoute = async () => {
       if (!routeForm.start || !routeForm.end) {
@@ -448,157 +538,115 @@ const app = createApp({
 
       routeLoading.value = true;
       routeDetailInfo.value = null;
+      routeResults.value = null;
 
-      const originPt = await getCoords(routeForm.start);
-      if (originPt) {
-        const isCoordInput = routeForm.start.match(/^([-\d.]+)[,\s]+([-\d.]+)$/);
-        routeForm.startCoords = isCoordInput ? '' : `${originPt.lng.toFixed(6)}, ${originPt.lat.toFixed(6)}`;
-      } else {
+      const origin = await getCoords(routeForm.start);
+      if (!origin) {
         routeForm.startCoords = '解析失败';
         routeLoading.value = false;
+        ElementPlus.ElMessage.error(`无法解析起点地址: ${routeForm.start}`);
         return;
       }
+      routeForm.startCoords = MapUtils.parseCoords(routeForm.start)
+        ? ''
+        : `${origin.lng.toFixed(6)}, ${origin.lat.toFixed(6)}`;
 
-      const destPt = await getCoords(routeForm.end);
-      if (destPt) {
-        const isCoordInput = routeForm.end.match(/^([-\d.]+)[,\s]+([-\d.]+)$/);
-        routeForm.endCoords = isCoordInput ? '' : `${destPt.lng.toFixed(6)}, ${destPt.lat.toFixed(6)}`;
-      } else {
+      const destination = await getCoords(routeForm.end);
+      if (!destination) {
         routeForm.endCoords = '解析失败';
         routeLoading.value = false;
+        ElementPlus.ElMessage.error(`无法解析终点地址: ${routeForm.end}`);
         return;
       }
+      routeForm.endCoords = MapUtils.parseCoords(routeForm.end)
+        ? ''
+        : `${destination.lng.toFixed(6)}, ${destination.lat.toFixed(6)}`;
 
-      const travelMode = routeForm.travelMode || 'driving';
-
-      if (mapInstance) {
-        clearDrawings();
-        if (jsRoutePlugin && typeof jsRoutePlugin.clear === 'function') {
-           jsRoutePlugin.clear();
-        }
-        
-        mapInstance.add(new AMap.Marker({ position: [originPt.lng, originPt.lat], title: '起点' }));
-        mapInstance.add(new AMap.Marker({ position: [destPt.lng, destPt.lat], title: '终点' }));
-        mapInstance.setFitView();
-      }
+      clearDrawings();
 
       if (routeForm.apiMode === 'server') {
         if (!serverAk.value) {
-          ElementPlus.ElMessage.warning('需要配置 服务端端侧 AK');
           routeLoading.value = false;
+          ElementPlus.ElMessage.warning('需要配置服务端 AK');
           return;
         }
-        
+
         let subPath = 'driving';
-        let queryStr = `origin=${originPt.lng},${originPt.lat}&destination=${destPt.lng},${destPt.lat}`;
-        
-        if (travelMode === 'transit') {
-            subPath = 'transit/integrated';
-            queryStr += `&city=${encodeURIComponent(globalRegion.value === '全国' ? '北京' : globalRegion.value)}`;
-        } else if (travelMode === 'walking') {
-            subPath = 'walking';
-        } else if (travelMode === 'riding') {
-            subPath = 'bicycling';
-            // riding in Amap goes to v4
-            queryStr = `origin=${originPt.lng},${originPt.lat}&destination=${destPt.lng},${destPt.lat}`;
+        if (routeForm.travelMode === 'transit') subPath = 'transit/integrated';
+        if (routeForm.travelMode === 'walking') subPath = 'walking';
+        if (routeForm.travelMode === 'riding') subPath = 'bicycling';
+        const version = routeForm.travelMode === 'riding' ? 'v4' : 'v3';
+
+        let query = `origin=${origin.lng},${origin.lat}&destination=${destination.lng},${destination.lat}`;
+        if (routeForm.travelMode === 'transit') {
+          query += `&city=${encodeURIComponent(globalRegion.value === '全国' ? '北京' : globalRegion.value)}`;
         }
-        
-        const version = travelMode === 'riding' ? 'v4' : 'v3';
-        const apiUrl = `https://restapi.amap.com/${version}/direction/${subPath}?${queryStr}&output=json&key=${serverAk.value}`;
-        
+
         try {
-          const res = await MapUtils.jsonp(apiUrl);
+          const url = `https://restapi.amap.com/${version}/direction/${subPath}?${query}&output=json&key=${serverAk.value}`;
+          const res = await MapUtils.jsonp(url);
           routeResults.value = res;
           if (res && res.status === '1') {
-            routeDetailInfo.value = parseServerRouteDetail(res, travelMode);
-            ElementPlus.ElMessage.success('服务端 API 线路请求成功');
+            routeDetailInfo.value = parseServerRouteDetail(res, routeForm.travelMode);
             if (mapInstance && window.AmapRouteDrawer) {
-               window.AmapRouteDrawer.drawServerRoute(mapInstance, res, travelMode, {
-                 startName: '起',
-                 endName: '终'
-               });
+              window.AmapRouteDrawer.drawServerRoute(mapInstance, res, routeForm.travelMode, {
+                startName: '起',
+                endName: '终'
+              });
             }
+            ElementPlus.ElMessage.success('路线规划成功');
           } else {
-            ElementPlus.ElMessage.error(`服务端 API 返回错误: ${res.info || 'Unknown error'}`);
+            ElementPlus.ElMessage.error(`路线规划失败: ${res.info || 'Unknown'}`);
           }
-        } catch (e) {
-          console.error(e);
-          ElementPlus.ElMessage.error('服务端 API 请求发生异常');
+        } catch (error) {
+          console.error(error);
+          ElementPlus.ElMessage.error(`路线规划失败: ${error.message}`);
         } finally {
           routeLoading.value = false;
         }
         return;
       }
 
-      // JS API Mode
-      if (!mapReady.value || !mapInstance) {
+      let PluginClass = null;
+      if (routeForm.travelMode === 'driving') PluginClass = AMap.Driving;
+      if (routeForm.travelMode === 'transit') PluginClass = AMap.Transfer;
+      if (routeForm.travelMode === 'walking') PluginClass = AMap.Walking;
+      if (routeForm.travelMode === 'riding') PluginClass = AMap.Riding;
+
+      if (!PluginClass) {
         routeLoading.value = false;
+        ElementPlus.ElMessage.warning('当前出行方式暂不支持');
         return;
       }
 
-      let PluginClass;
-      if (travelMode === 'driving') PluginClass = AMap.Driving;
-      else if (travelMode === 'transit') PluginClass = AMap.Transfer;
-      else if (travelMode === 'walking') PluginClass = AMap.Walking;
-      else if (travelMode === 'riding') PluginClass = AMap.Riding;
-
-      if (!PluginClass) {
-          ElementPlus.ElMessage.warning('未能识别出行方式');
-          routeLoading.value = false;
-          return;
-      }
-
-      jsRoutePlugin = new PluginClass({
-          map: mapInstance,
-          city: globalRegion.value && globalRegion.value !== '全国' ? globalRegion.value : '北京市'
+      routePlugin = new PluginClass({
+        map: mapInstance,
+        city: globalRegion.value && globalRegion.value !== '全国' ? globalRegion.value : '北京市'
       });
 
-      jsRoutePlugin.search([originPt.lng, originPt.lat], [destPt.lng, destPt.lat], (status, result) => {
-          routeLoading.value = false;
-          if (status === 'complete' && result.info === 'OK') {
-             try {
-                const details = [];
-                const plans = result.plans || result.routes || (result.routes ? [result.routes[0]] : []);
-                
-                plans.slice(0, 5).forEach((plan, pIdx) => {
-                   const distance = plan.distance || 0;
-                   const duration = plan.time || plan.duration || 0;
-                   const dInfo = {
-                       index: pIdx + 1,
-                       distance: MapUtils.formatDistance(distance),
-                       duration: MapUtils.formatDuration(duration),
-                       steps: []
-                   };
-                   
-                   const steps = plan.steps || plan.segments || plan.rides || plan.walks || [];
-                   steps.forEach((step, sIdx) => {
-                       // Amap Transfer produces segments with transit_mode
-                       if (travelMode === 'transit' && step.transit_mode) {
-                          dInfo.steps.push({
-                              index: sIdx + 1,
-                              instruction: step.instruction || '搭乘公共交通',
-                              distance: '',
-                              duration: ''
-                          });
-                       } else {
-                          dInfo.steps.push({
-                              index: sIdx + 1,
-                              instruction: (step.instruction || step.action || '向前').replace(/<[^>]+>/g, ''),
-                              distance: MapUtils.formatDistance(step.distance || 0),
-                              duration: ''
-                          });
-                       }
-                   });
-                   
-                   details.push(dInfo);
-                });
-                routeDetailInfo.value = details;
-             } catch(ex) {
-                 console.warn('Extract route detail failed:', ex);
-             }
-          } else {
-             ElementPlus.ElMessage.warning('前端路线规划失败: ' + status);
+      routePlugin.search([origin.lng, origin.lat], [destination.lng, destination.lat], (status, result) => {
+        routeLoading.value = false;
+        if (status === 'complete' && result.info === 'OK') {
+          try {
+            const plans = result.plans || result.routes || [];
+            routeDetailInfo.value = plans.slice(0, 5).map((plan, idx) => ({
+              index: idx + 1,
+              distance: MapUtils.formatDistance(parseFloat(plan.distance || 0)),
+              duration: MapUtils.formatDuration(parseFloat(plan.time || plan.duration || 0)),
+              steps: (plan.steps || plan.segments || []).map((step, stepIndex) => ({
+                index: stepIndex + 1,
+                instruction: MapUtils.stripHtml(step.instruction || step.action || ''),
+                distance: MapUtils.formatDistance(parseFloat(step.distance || 0)),
+                duration: ''
+              }))
+            }));
+          } catch (error) {
+            console.warn('Failed to extract route detail:', error);
           }
+        } else {
+          routeDetailInfo.value = null;
+        ElementPlus.ElMessage.warning(`路线规划失败: ${status}`);
+        }
       });
     };
 
@@ -622,17 +670,21 @@ const app = createApp({
       globalRegion,
       mapReady,
       mapLoading,
+      searchLoading,
+      routeLoading,
+      locateLoading,
       loadAmap,
       searchForm,
       searchResults,
-      searchLoading,
-      routeLoading,
       serverSearchRawData,
       searchResultTab,
       doSearch,
       viewOnMap,
       quickSearch,
       locateForm,
+      nearbyResults,
+      nearbyRawData,
+      locateResultTab,
       locateInput,
       routeForm,
       routeResults,
@@ -641,7 +693,8 @@ const app = createApp({
       calcRoute,
       copyJson: MapUtils.copyJson,
       searchJsonHtml,
-      routeJsonHtml
+      routeJsonHtml,
+      nearbyJsonHtml
     };
   }
 });

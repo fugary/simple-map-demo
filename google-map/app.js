@@ -18,10 +18,16 @@ const app = createApp({
     const activeTab = ref('config');
     let mapInstance = null;
     let directionsRenderer = null;
+    let searchMarkers = [];
+    let nearbyMarkers = [];
+    let routeMarkers = [];
+    let routePolylines = [];
+    let sharedInfoWindow = null;
+    let nearbyCenterPoint = null;
 
-    // Loading states
     const searchLoading = ref(false);
     const routeLoading = ref(false);
+    const locateLoading = ref(false);
 
     const searchForm = reactive({
       apiMode: 'frontend',
@@ -32,14 +38,20 @@ const app = createApp({
     const serverSearchRawData = ref(null);
     const searchResultTab = ref('list');
 
-    // Locate Form
     const locateForm = reactive({
+      apiMode: 'frontend',
       input: '',
-      resolvedCoords: ''
+      resolvedCoords: '',
+      nearbyKeyword: '',
+      radius: 2000,
+      count: 20
     });
+    const nearbyResults = ref([]);
+    const nearbyRawData = ref(null);
+    const locateResultTab = ref('list');
 
-    // Route Form
     const routeForm = reactive({
+      apiMode: 'frontend',
       travelMode: 'DRIVING',
       start: '',
       end: '',
@@ -50,7 +62,6 @@ const app = createApp({
     const routeResults = ref(null);
     const routeResultTab = ref('list');
 
-    // JSON highlights
     const searchJsonHtml = computed(() => {
       if (!serverSearchRawData.value) return '';
       return MapUtils.highlightJson(JSON.stringify(serverSearchRawData.value, null, 2));
@@ -61,7 +72,11 @@ const app = createApp({
       return MapUtils.highlightJson(JSON.stringify(routeResults.value, null, 2));
     });
 
-    // Load config from localStorage
+    const nearbyJsonHtml = computed(() => {
+      if (!nearbyRawData.value) return '';
+      return MapUtils.highlightJson(JSON.stringify(nearbyRawData.value, null, 2));
+    });
+
     const initConfig = () => {
       apiKeyList.value = MapUtils.loadConfigList('google_map_api_keys');
       if (apiKeyList.value.length > 0) apiKey.value = apiKeyList.value[0];
@@ -70,7 +85,76 @@ const app = createApp({
       if (regionList.value.length > 0) globalRegion.value = regionList.value[0];
 
       const savedProxy = localStorage.getItem('google_map_proxy_base');
-      if (savedProxy) proxyBaseUrl.value = savedProxy;
+      if (savedProxy) {
+        proxyBaseUrl.value = savedProxy;
+      }
+    };
+
+    const proxyUrl = (path, params) => {
+      const base = (proxyBaseUrl.value || DEFAULT_PROXY_BASE).replace(/\/+$/, '');
+      const qs = new URLSearchParams(params).toString();
+      return `${base}/${path}?${qs}`;
+    };
+
+    const normalizeLocation = (loc) => {
+      if (!loc) return null;
+      if (typeof loc.lat === 'function') {
+        return { lat: loc.lat(), lng: loc.lng() };
+      }
+      return { lat: Number(loc.lat), lng: Number(loc.lng) };
+    };
+
+    const clearMarkers = (markers) => {
+      markers.forEach((marker) => marker.setMap(null));
+      markers.length = 0;
+    };
+
+    const clearSearchMarkers = () => clearMarkers(searchMarkers);
+    const clearNearbyMarkers = () => {
+      nearbyCenterPoint = null;
+      clearMarkers(nearbyMarkers);
+    };
+    const clearRouteMarkers = () => clearMarkers(routeMarkers);
+
+    const clearRenderedRoute = () => {
+      if (directionsRenderer) {
+        directionsRenderer.setMap(null);
+        directionsRenderer = null;
+      }
+      routePolylines.forEach((polyline) => polyline.setMap(null));
+      routePolylines = [];
+      clearRouteMarkers();
+    };
+
+    const getInfoWindow = () => {
+      if (!sharedInfoWindow) {
+        sharedInfoWindow = new google.maps.InfoWindow();
+      }
+      return sharedInfoWindow;
+    };
+
+    const fitGoogleBounds = (points) => {
+      if (!mapInstance || !points.length) return;
+      const bounds = new google.maps.LatLngBounds();
+      points.forEach((point) => bounds.extend(point));
+      mapInstance.fitBounds(bounds);
+    };
+
+    const addMarker = (store, position, title, content) => {
+      const marker = new google.maps.Marker({
+        position,
+        map: mapInstance,
+        title
+      });
+      if (content) {
+        marker.addListener('click', () => {
+          const infoWindow = getInfoWindow();
+          infoWindow.setContent(content);
+          infoWindow.open(mapInstance, marker);
+        });
+      }
+      store.push(marker);
+      return marker;
     };
 
     const loadGoogleMap = () => {
@@ -94,9 +178,9 @@ const app = createApp({
 
       const script = document.createElement('script');
       script.type = 'text/javascript';
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey.value}&libraries=places&language=${mapLanguage()}&region=${mapRegion()}&callback=initGoogleMapCallback`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey.value}&libraries=places,geometry&language=${mapLanguage()}&region=${mapRegion()}&callback=initGoogleMapCallback`;
       script.onerror = () => {
-        ElementPlus.ElMessage.error('Google Maps 加载失败，请检查 API Key 或网络！');
+        ElementPlus.ElMessage.error('Google Maps 加载失败，请检查 API Key 或网络');
       };
       document.body.appendChild(script);
     };
@@ -104,13 +188,11 @@ const app = createApp({
     const initMap = async () => {
       try {
         let defaultCenter = { lat: 39.915, lng: 116.404 };
-
-        // If user specified a region, geocode it and center before init
         if (globalRegion.value) {
-            const pt = await getCoords(globalRegion.value);
-            if (pt) {
-                defaultCenter = { lat: pt.lat, lng: pt.lng };
-            }
+          const pt = await resolveLocation(globalRegion.value, 'frontend');
+          if (pt) {
+            defaultCenter = pt;
+          }
         }
 
         mapInstance = markRaw(new google.maps.Map(document.getElementById('map-container'), {
@@ -122,25 +204,99 @@ const app = createApp({
 
         mapReady.value = true;
         ElementPlus.ElMessage.success('Google Maps 加载成功');
-      } catch (e) {
-        console.error('Map init error:', e);
-        ElementPlus.ElMessage.error('地图初始化失败，请检查 API Key 是否合法！');
+      } catch (error) {
+        console.error('Map init error:', error);
+        ElementPlus.ElMessage.error('地图初始化失败，请检查 API Key 是否合法');
       }
     };
 
-    // ---- Proxy helper: build proxy URL ----
-    const proxyUrl = (path, params) => {
-      const base = (proxyBaseUrl.value || DEFAULT_PROXY_BASE).replace(/\/+$/, '');
-      const qs = new URLSearchParams(params).toString();
-      return `${base}/${path}?${qs}`;
+    const geocodeByFrontend = (address) => {
+      return new Promise((resolve) => {
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ address }, (results, status) => {
+          if (status === 'OK' && results[0]) {
+            resolve(normalizeLocation(results[0].geometry.location));
+          } else {
+            resolve(null);
+          }
+        });
+      });
     };
 
-    // ---- Place Search ----
-    let searchMarkers = [];
+    const geocodeByServer = async (address) => {
+      const res = await fetch(proxyUrl('geocode/json', {
+        address,
+        key: apiKey.value
+      })).then((response) => response.json());
+      if (res && res.status === 'OK' && Array.isArray(res.results) && res.results[0]) {
+        return normalizeLocation(res.results[0].geometry.location);
+      }
+      return null;
+    };
 
-    const clearSearchMarkers = () => {
-      searchMarkers.forEach(m => m.setMap(null));
-      searchMarkers = [];
+    const resolveLocation = async (input, mode = 'frontend') => {
+      const parsed = MapUtils.parseCoords(input);
+      if (parsed) {
+        return { lat: parsed.lat, lng: parsed.lng };
+      }
+
+      const address = String(input || '').trim();
+      if (!address) return null;
+
+      if (mode === 'server') {
+        try {
+          const serverResult = await geocodeByServer(address);
+          if (serverResult) return serverResult;
+        } catch (error) {
+          console.warn('Server geocode failed:', error);
+        }
+      }
+
+      if (window.google && window.google.maps) {
+        return geocodeByFrontend(address);
+      }
+
+      if (mode !== 'server') {
+        try {
+          return await geocodeByServer(address);
+        } catch (error) {
+          console.warn('Fallback server geocode failed:', error);
+        }
+      }
+
+      return null;
+    };
+
+    const mapSearchResult = (result, isServer) => {
+      const location = isServer
+        ? normalizeLocation(result.geometry && result.geometry.location)
+        : normalizeLocation(result.geometry && result.geometry.location);
+      return {
+        title: result.name || 'Unnamed',
+        address: `${result.formatted_address || result.vicinity || 'Unknown'} [${location ? `${location.lng.toFixed(6)},${location.lat.toFixed(6)}` : ''}]`,
+        location,
+        placeId: result.place_id || '',
+        raw: result
+      };
+    };
+
+    const renderSearchResults = (items) => {
+      if (!mapInstance) return;
+      clearSearchMarkers();
+      const points = [];
+      items.forEach((item) => {
+        if (!item.location) return;
+        const marker = addMarker(
+          searchMarkers,
+          item.location,
+          item.title,
+          `<div style="font-size:13px;"><b>${item.title}</b><br/>${item.address || ''}</div>`
+        );
+        points.push(marker.getPosition());
+      });
+      if (points.length > 0) {
+        fitGoogleBounds(points);
+      }
     };
 
     const doSearch = async () => {
@@ -152,7 +308,6 @@ const app = createApp({
       searchLoading.value = true;
 
       if (searchForm.apiMode === 'server') {
-        // Server mode via proxy
         clearSearchMarkers();
         serverSearchRawData.value = null;
         try {
@@ -163,133 +318,72 @@ const app = createApp({
           if (globalRegion.value) {
             params.region = globalRegion.value;
           }
-          const url = proxyUrl('place/textsearch/json', params);
-          const res = await fetch(url).then(r => r.json());
+          const res = await fetch(proxyUrl('place/textsearch/json', params)).then((response) => response.json());
           serverSearchRawData.value = res;
-
-          if (res && res.status === 'OK' && res.results) {
-            const limited = res.results.slice(0, searchForm.count || 10);
-            searchResults.value = limited.map(r => ({
-              title: r.name || '无名称',
-              address: `${r.formatted_address || '无地址'} [${r.geometry ? r.geometry.location.lng.toFixed(6) + ',' + r.geometry.location.lat.toFixed(6) : ''}]`,
-              location: r.geometry ? { lat: r.geometry.location.lat, lng: r.geometry.location.lng } : null,
-              placeId: r.place_id
-            }));
-
-            // Show markers on map if available
-            if (mapInstance) {
-              const bounds = new google.maps.LatLngBounds();
-              limited.forEach(r => {
-                if (r.geometry && r.geometry.location) {
-                  const pos = { lat: r.geometry.location.lat, lng: r.geometry.location.lng };
-                  const marker = new google.maps.Marker({
-                    position: pos,
-                    map: mapInstance,
-                    title: r.name
-                  });
-                  searchMarkers.push(marker);
-                  bounds.extend(pos);
-                }
-              });
-              if (searchMarkers.length > 0) {
-                mapInstance.fitBounds(bounds);
-              }
-            }
-
+          if (res && res.status === 'OK' && Array.isArray(res.results)) {
+            searchResults.value = res.results
+              .slice(0, searchForm.count || 10)
+              .map((item) => mapSearchResult(item, true));
+            renderSearchResults(searchResults.value);
             ElementPlus.ElMessage.success(`服务端 API 找到 ${searchResults.value.length} 条结果`);
           } else {
-            ElementPlus.ElMessage.warning('服务端 API 未找到结果: ' + (res.status || 'Unknown'));
             searchResults.value = [];
+            ElementPlus.ElMessage.warning(`服务端搜索失败: ${res.status || 'Unknown'}`);
           }
-        } catch (e) {
-          console.error('Server search error:', e);
-          ElementPlus.ElMessage.error('服务端 API 请求失败: ' + e.message);
+        } catch (error) {
+          console.error('Server search error:', error);
           searchResults.value = [];
+          ElementPlus.ElMessage.error(`服务端搜索请求失败: ${error.message}`);
         } finally {
           searchLoading.value = false;
         }
         return;
       }
 
-      // Frontend mode
       if (!mapReady.value || !mapInstance) {
         searchLoading.value = false;
         return;
       }
+
       clearSearchMarkers();
       serverSearchRawData.value = null;
-
       const service = new google.maps.places.PlacesService(mapInstance);
       const request = {
         query: searchForm.keyword,
         fields: ['name', 'formatted_address', 'geometry', 'place_id']
       };
-
-      // If region is set, bias towards it
       if (globalRegion.value && mapInstance.getBounds()) {
         request.bounds = mapInstance.getBounds();
       }
 
       service.textSearch(request, (results, status) => {
         searchLoading.value = false;
-        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-          const limited = results.slice(0, searchForm.count || 10);
-          searchResults.value = limited.map(r => ({
-            title: r.name || '无名称',
-            address: `${r.formatted_address || '无地址'} [${r.geometry ? r.geometry.location.lng().toFixed(6) + ',' + r.geometry.location.lat().toFixed(6) : ''}]`,
-            location: r.geometry ? r.geometry.location : null,
-            placeId: r.place_id
-          }));
-
-          // Add markers and fit bounds
-          const bounds = new google.maps.LatLngBounds();
-          limited.forEach(r => {
-            if (r.geometry && r.geometry.location) {
-              const marker = new google.maps.Marker({
-                position: r.geometry.location,
-                map: mapInstance,
-                title: r.name
-              });
-              searchMarkers.push(marker);
-              bounds.extend(r.geometry.location);
-            }
-          });
-          if (searchMarkers.length > 0) {
-            mapInstance.fitBounds(bounds);
-          }
-
+        if (status === google.maps.places.PlacesServiceStatus.OK && Array.isArray(results)) {
+          searchResults.value = results
+            .slice(0, searchForm.count || 10)
+            .map((item) => mapSearchResult(item, false));
+          renderSearchResults(searchResults.value);
           ElementPlus.ElMessage.success(`找到 ${searchResults.value.length} 条结果`);
         } else {
-          ElementPlus.ElMessage.info('未找到相关结果 (' + status + ')');
           searchResults.value = [];
+          ElementPlus.ElMessage.info(`未找到相关结果 (${status})`);
         }
       });
     };
 
     const viewOnMap = (item) => {
-      if (!mapInstance) return;
-      const loc = item.location;
-      if (!loc) return;
-
-      // Normalize location: server mode returns plain object, frontend returns LatLng
-      const pos = typeof loc.lat === 'function'
-        ? { lat: loc.lat(), lng: loc.lng() }
-        : loc;
-
-      mapInstance.panTo(pos);
-      mapInstance.setZoom(15);
-
+      if (!mapInstance || !item || !item.location) return;
       clearSearchMarkers();
-      const marker = new google.maps.Marker({
-        position: pos,
-        map: mapInstance,
-        title: item.title
-      });
-      searchMarkers.push(marker);
-
-      const infoWindow = new google.maps.InfoWindow({
-        content: `<div style="font-size:13px;"><b>${item.title}</b><br/>${item.address || ''}</div>`
-      });
+      const marker = addMarker(
+        searchMarkers,
+        item.location,
+        item.title,
+        `<div style="font-size:13px;"><b>${item.title}</b><br/>${item.address || ''}</div>`
+      );
+      mapInstance.panTo(item.location);
+      mapInstance.setZoom(15);
+      const infoWindow = getInfoWindow();
+      infoWindow.setContent(`<div style="font-size:13px;"><b>${item.title}</b><br/>${item.address || ''}</div>`);
       infoWindow.open(mapInstance, marker);
     };
 
@@ -300,130 +394,259 @@ const app = createApp({
       doSearch();
     };
 
-    // ---- Geocoding / Locate ----
-    const locateInput = () => {
-      if (!mapReady.value || !mapInstance) return;
-      const input = locateForm.input.trim();
-      if (!input) return;
-
-      const coordsParsed = MapUtils.parseCoords(input);
-      if (coordsParsed) {
-        const pos = { lat: coordsParsed.lat, lng: coordsParsed.lng };
-        clearSearchMarkers();
-        const marker = new google.maps.Marker({
-          position: pos,
-          map: mapInstance
-        });
-        searchMarkers.push(marker);
-        mapInstance.panTo(pos);
-        mapInstance.setZoom(15);
-        locateForm.resolvedCoords = `${coordsParsed.lng.toFixed(6)}, ${coordsParsed.lat.toFixed(6)}`;
-      } else {
-        const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ address: input }, (results, status) => {
-          if (status === 'OK' && results[0]) {
-            const loc = results[0].geometry.location;
-            clearSearchMarkers();
-            const marker = new google.maps.Marker({
-              position: loc,
-              map: mapInstance
-            });
-            searchMarkers.push(marker);
-            mapInstance.setCenter(loc);
-            mapInstance.setZoom(16);
-            locateForm.resolvedCoords = `${loc.lng().toFixed(6)}, ${loc.lat().toFixed(6)}`;
-          } else {
-            ElementPlus.ElMessage.warning('未能解析该地址的坐标');
-            locateForm.resolvedCoords = '';
-          }
-        });
-      }
+    const isSameNearbyItem = (left, right) => {
+      if (!left || !right) return false;
+      if (left.placeId && right.placeId) return left.placeId === right.placeId;
+      if (!left.location || !right.location) return false;
+      return left.location.lat === right.location.lat && left.location.lng === right.location.lng;
     };
 
-    // ---- Route Planning ----
-    const getCoords = (addressOrCoords) => {
-      return new Promise((resolve) => {
-        const coordsParsed = MapUtils.parseCoords(addressOrCoords);
-        if (coordsParsed) {
-          resolve(coordsParsed);
+    const mapNearbyItems = (items) => (Array.isArray(items) ? items : [])
+      .map(mapNearbyResult)
+      .filter((item) => item.location)
+      .slice(0, locateForm.count || 20);
+
+    const renderNearbyResults = (centerPoint, items, activeItem = null) => {
+      if (!mapInstance) return;
+      nearbyCenterPoint = centerPoint;
+      clearMarkers(nearbyMarkers);
+      const points = [];
+
+      const centerMarker = addMarker(
+        nearbyMarkers,
+        centerPoint,
+        'Center',
+        `<div style="font-size:13px;"><b>Center</b><br/>${centerPoint.lng.toFixed(6)}, ${centerPoint.lat.toFixed(6)}</div>`
+      );
+      points.push(centerMarker.getPosition());
+
+      items.forEach((item) => {
+        if (!item.location) return;
+        const content = `<div style="font-size:13px;"><b>${item.title}</b><br/>${item.address || ''}</div>`;
+        const marker = addMarker(
+          nearbyMarkers,
+          item.location,
+          item.title,
+          content
+        );
+        points.push(marker.getPosition());
+        if (activeItem && isSameNearbyItem(item, activeItem)) {
+          const infoWindow = getInfoWindow();
+          infoWindow.setContent(content);
+          infoWindow.open(mapInstance, marker);
+        }
+      });
+
+      fitGoogleBounds(points);
+    };
+
+    const mapNearbyResult = (item) => {
+      const location = normalizeLocation(item.geometry && item.geometry.location);
+      return {
+        title: item.name || 'Unnamed',
+        address: `${item.vicinity || item.formatted_address || 'Unknown'} [${location ? `${location.lng.toFixed(6)},${location.lat.toFixed(6)}` : ''}]`,
+        location,
+        placeId: item.place_id || '',
+        raw: item
+      };
+    };
+
+    const nearbySearchByFrontend = (centerPoint) => {
+      return new Promise((resolve, reject) => {
+        const service = new google.maps.places.PlacesService(mapInstance);
+        service.nearbySearch({
+          location: centerPoint,
+          radius: locateForm.radius || 2000,
+          keyword: locateForm.nearbyKeyword
+        }, (results, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK || status === google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+            resolve({
+              status,
+              raw: results || [],
+              items: mapNearbyItems(results)
+            });
+          } else {
+            reject(new Error(status));
+          }
+        });
+      });
+    };
+
+    const nearbySearchByServer = async (centerPoint) => {
+      const res = await fetch(proxyUrl('place/nearbysearch/json', {
+        location: `${centerPoint.lat},${centerPoint.lng}`,
+        radius: String(locateForm.radius || 2000),
+        keyword: locateForm.nearbyKeyword,
+        key: apiKey.value
+      })).then((response) => response.json());
+
+      return {
+        status: res && res.status,
+        raw: res,
+        items: res && res.status === 'OK' && Array.isArray(res.results)
+          ? mapNearbyItems(res.results)
+          : []
+      };
+    };
+
+    const locateInput = async () => {
+      if (!mapReady.value || !mapInstance) return;
+
+      const input = locateForm.input.trim();
+      if (!input) {
+        ElementPlus.ElMessage.warning('请输入地址或经纬度');
+        return;
+      }
+
+      locateLoading.value = true;
+      nearbyResults.value = [];
+      nearbyRawData.value = null;
+      clearNearbyMarkers();
+
+      try {
+        const centerPoint = await resolveLocation(input, locateForm.apiMode);
+        if (!centerPoint) {
+          locateForm.resolvedCoords = '';
+          ElementPlus.ElMessage.warning('地址解析失败');
           return;
         }
 
-        const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ address: (addressOrCoords || '').trim() }, (results, status) => {
-          if (status === 'OK' && results[0]) {
-            const loc = results[0].geometry.location;
-            resolve({ lng: loc.lng(), lat: loc.lat() });
-          } else {
-            resolve(null);
-          }
-        });
-      });
-    };
+        locateForm.resolvedCoords = `${centerPoint.lng.toFixed(6)}, ${centerPoint.lat.toFixed(6)}`;
 
-    // Server mode route via proxy
-    const calcServerRoute = async (originPt, destPt) => {
-      const modeMap = { 'DRIVING': 'driving', 'WALKING': 'walking', 'BICYCLING': 'bicycling', 'TRANSIT': 'transit' };
-      const params = {
-        origin: `${originPt.lat},${originPt.lng}`,
-        destination: `${destPt.lat},${destPt.lng}`,
-        mode: modeMap[routeForm.travelMode] || 'driving',
-        key: apiKey.value,
-        alternatives: 'true'
-      };
-      const url = proxyUrl('directions/json', params);
-      try {
-        const res = await fetch(url).then(r => r.json());
-        routeResults.value = res;
-        if (res && res.status === 'OK' && res.routes) {
-          routeDetailInfo.value = parseServerDirections(res);
-          ElementPlus.ElMessage.success('服务端路线规划成功');
-        } else {
-          ElementPlus.ElMessage.error('服务端路线规划失败: ' + (res.status || 'Unknown'));
-          routeDetailInfo.value = null;
+        if (!locateForm.nearbyKeyword.trim()) {
+          renderNearbyResults(centerPoint, []);
+          ElementPlus.ElMessage.success('中心点解析成功');
+          return;
         }
-      } catch (e) {
-        console.error('Server route error:', e);
-        ElementPlus.ElMessage.error('服务端路线请求失败: ' + e.message);
+
+        if (locateForm.apiMode === 'server') {
+          const result = await nearbySearchByServer(centerPoint);
+          nearbyRawData.value = result.raw;
+          if (result.status && result.status !== 'OK' && result.status !== 'ZERO_RESULTS') {
+            throw new Error(result.status);
+          }
+          nearbyResults.value = result.items;
+        } else {
+          const result = await nearbySearchByFrontend(centerPoint);
+          nearbyResults.value = result.items;
+        }
+
+        renderNearbyResults(centerPoint, nearbyResults.value);
+        if (nearbyResults.value.length > 0) {
+          ElementPlus.ElMessage.success(`找到 ${nearbyResults.value.length} 条附近结果`);
+        } else {
+          ElementPlus.ElMessage.info('未找到附近结果');
+        }
+      } catch (error) {
+        console.error('Nearby search failed:', error);
+        locateForm.resolvedCoords = '';
+        nearbyResults.value = [];
+        nearbyRawData.value = null;
+        ElementPlus.ElMessage.error(`附近搜索失败: ${error.message}`);
+      } finally {
+        locateLoading.value = false;
       }
     };
 
-    const parseServerDirections = (res) => {
-      if (!res || !res.routes) return null;
-      return res.routes.map((route, idx) => {
-        const leg = route.legs[0];
-        const detail = {
+    const viewNearbyOnMap = (item) => {
+      if (!mapInstance || !item || !item.location) return;
+      renderNearbyResults(nearbyCenterPoint || item.location, nearbyResults.value, item);
+      mapInstance.panTo(item.location);
+      mapInstance.setZoom(16);
+    };
+
+    const parseGoogleRouteDetail = (routes) => {
+      if (!Array.isArray(routes)) return null;
+      return routes.map((route, idx) => {
+        const leg = route.legs && route.legs[0];
+        if (!leg) return null;
+        return {
           index: idx + 1,
-          distance: leg.distance ? leg.distance.text : '未知',
-          duration: leg.duration ? leg.duration.text : '未知',
-          steps: []
-        };
-        if (leg.steps) {
-          leg.steps.forEach((step, i) => {
-            const stepItem = {
-              index: i + 1,
-              instruction: (step.html_instructions || '').replace(/<[^>]+>/g, ''),
+          distance: leg.distance ? leg.distance.text : 'Unknown',
+          duration: leg.duration ? leg.duration.text : 'Unknown',
+          steps: (leg.steps || []).map((step, stepIndex) => {
+            const transit = step.transit_details || step.transit || null;
+            const lineName = transit && transit.line ? transit.line.short_name || transit.line.name || '' : '';
+            return {
+              index: stepIndex + 1,
+              instruction: MapUtils.stripHtml(step.html_instructions || step.instructions || ''),
               distance: step.distance ? step.distance.text : '',
               duration: step.duration ? step.duration.text : '',
-              transitDetail: ''
+              transitDetail: lineName
             };
-            if (step.transit_details) {
-              const t = step.transit_details;
-              const lineName = t.line ? t.line.short_name || t.line.name || '' : '';
-              stepItem.transitDetail = lineName;
-              const departure = t.departure_stop ? t.departure_stop.name : '';
-              const arrival = t.arrival_stop ? t.arrival_stop.name : '';
-              const numStops = t.num_stops || '';
-              stepItem.instruction = `乘坐 ${lineName}` +
-                (departure ? `（${departure}` : '') +
-                (arrival ? ` → ${arrival}）` : departure ? '）' : '') +
-                (numStops ? ` 途经 ${numStops} 站` : '');
-            }
-            detail.steps.push(stepItem);
-          });
-        }
-        return detail;
-      });
+          })
+        };
+      }).filter(Boolean);
+    };
+
+    const renderServerRoute = (res, originPoint, destPoint) => {
+      if (!mapInstance || !res || res.status !== 'OK' || !Array.isArray(res.routes) || res.routes.length === 0) {
+        return;
+      }
+
+      clearRenderedRoute();
+      const route = res.routes[0];
+      const leg = route.legs && route.legs[0];
+      const path = route.overview_polyline && route.overview_polyline.points
+        ? MapUtils.decodeGooglePolyline(route.overview_polyline.points).map((point) => ({ lat: point.lat, lng: point.lng }))
+        : [];
+
+      if (path.length > 0) {
+        const polyline = new google.maps.Polyline({
+          path,
+          map: mapInstance,
+          strokeColor: '#4285F4',
+          strokeOpacity: 0.85,
+          strokeWeight: 6
+        });
+        routePolylines.push(polyline);
+      }
+
+      const startPoint = leg && leg.start_location ? normalizeLocation(leg.start_location) : originPoint;
+      const endPoint = leg && leg.end_location ? normalizeLocation(leg.end_location) : destPoint;
+      if (startPoint) {
+        addMarker(routeMarkers, startPoint, 'Start', '<div><b>Start</b></div>');
+      }
+      if (endPoint) {
+        addMarker(routeMarkers, endPoint, 'End', '<div><b>End</b></div>');
+      }
+
+      if (route.bounds && route.bounds.northeast && route.bounds.southwest) {
+        const bounds = new google.maps.LatLngBounds(route.bounds.southwest, route.bounds.northeast);
+        mapInstance.fitBounds(bounds);
+      } else {
+        const points = [];
+        if (startPoint) points.push(startPoint);
+        if (endPoint) points.push(endPoint);
+        path.forEach((point) => points.push(point));
+        fitGoogleBounds(points);
+      }
+    };
+
+    const calcServerRoute = async (originPoint, destPoint) => {
+      const modeMap = {
+        DRIVING: 'driving',
+        WALKING: 'walking',
+        BICYCLING: 'bicycling',
+        TRANSIT: 'transit'
+      };
+      const res = await fetch(proxyUrl('directions/json', {
+        origin: `${originPoint.lat},${originPoint.lng}`,
+        destination: `${destPoint.lat},${destPoint.lng}`,
+        mode: modeMap[routeForm.travelMode] || 'driving',
+        alternatives: 'true',
+        key: apiKey.value
+      })).then((response) => response.json());
+
+      routeResults.value = res;
+      if (res && res.status === 'OK' && Array.isArray(res.routes)) {
+        routeDetailInfo.value = parseGoogleRouteDetail(res.routes);
+        renderServerRoute(res, originPoint, destPoint);
+        ElementPlus.ElMessage.success('路线规划成功');
+      } else {
+        routeDetailInfo.value = null;
+        ElementPlus.ElMessage.error(`路线规划失败: ${res.status || 'Unknown'}`);
+      }
     };
 
     const calcRoute = async () => {
@@ -437,110 +660,66 @@ const app = createApp({
       routeDetailInfo.value = null;
       routeResults.value = null;
 
-      // Resolve coords for display
-      const originPt = await getCoords(routeForm.start);
-      if (originPt) {
-        const isCoord = MapUtils.parseCoords(routeForm.start);
-        routeForm.startCoords = isCoord ? '' : `${originPt.lng.toFixed(6)}, ${originPt.lat.toFixed(6)}`;
-      } else {
-        ElementPlus.ElMessage.error(`无法解析起点地址：${routeForm.start}`);
+      const originPoint = await resolveLocation(routeForm.start, routeForm.apiMode);
+      if (!originPoint) {
         routeForm.startCoords = '解析失败';
         routeLoading.value = false;
+        ElementPlus.ElMessage.error(`无法解析起点地址: ${routeForm.start}`);
         return;
       }
+      routeForm.startCoords = MapUtils.parseCoords(routeForm.start)
+        ? ''
+        : `${originPoint.lng.toFixed(6)}, ${originPoint.lat.toFixed(6)}`;
 
-      const destPt = await getCoords(routeForm.end);
-      if (destPt) {
-        const isCoord = MapUtils.parseCoords(routeForm.end);
-        routeForm.endCoords = isCoord ? '' : `${destPt.lng.toFixed(6)}, ${destPt.lat.toFixed(6)}`;
-      } else {
-        ElementPlus.ElMessage.error(`无法解析终点地址：${routeForm.end}`);
+      const destPoint = await resolveLocation(routeForm.end, routeForm.apiMode);
+      if (!destPoint) {
         routeForm.endCoords = '解析失败';
         routeLoading.value = false;
+        ElementPlus.ElMessage.error(`无法解析终点地址: ${routeForm.end}`);
         return;
       }
+      routeForm.endCoords = MapUtils.parseCoords(routeForm.end)
+        ? ''
+        : `${destPoint.lng.toFixed(6)}, ${destPoint.lat.toFixed(6)}`;
 
-      // Server mode
-      if (searchForm.apiMode === 'server') {
-        await calcServerRoute(originPt, destPt);
-        routeLoading.value = false;
-        return;
-      }
+      try {
+        clearRenderedRoute();
+        clearSearchMarkers();
+        clearNearbyMarkers();
 
-      // Frontend mode
-      // Clear previous route
-      if (directionsRenderer) {
-        directionsRenderer.setMap(null);
-      }
-      directionsRenderer = new google.maps.DirectionsRenderer({
-        map: mapInstance
-      });
-
-      clearSearchMarkers();
-
-      const directionsService = new google.maps.DirectionsService();
-      const request = {
-        origin: { lat: originPt.lat, lng: originPt.lng },
-        destination: { lat: destPt.lat, lng: destPt.lng },
-        travelMode: google.maps.TravelMode[routeForm.travelMode],
-        provideRouteAlternatives: true
-      };
-
-      directionsService.route(request, (result, status) => {
-        routeLoading.value = false;
-        if (status === 'OK') {
-          directionsRenderer.setDirections(result);
-          routeDetailInfo.value = parseDirectionsResult(result);
-          ElementPlus.ElMessage.success('路线规划成功');
-        } else {
-          ElementPlus.ElMessage.error('路线规划失败: ' + status);
-          routeDetailInfo.value = null;
-        }
-      });
-    };
-
-    const parseDirectionsResult = (result) => {
-      if (!result || !result.routes) return null;
-
-      return result.routes.map((route, idx) => {
-        const leg = route.legs[0];
-        const detail = {
-          index: idx + 1,
-          distance: leg.distance ? leg.distance.text : '未知',
-          duration: leg.duration ? leg.duration.text : '未知',
-          steps: []
-        };
-
-        if (leg.steps) {
-          leg.steps.forEach((step, i) => {
-            const stepItem = {
-              index: i + 1,
-              instruction: (step.instructions || '').replace(/<[^>]+>/g, ''),
-              distance: step.distance ? step.distance.text : '',
-              duration: step.duration ? step.duration.text : '',
-              transitDetail: ''
-            };
-
-            // Transit specific info
-            if (step.transit) {
-              const t = step.transit;
-              const lineName = t.line ? t.line.short_name || t.line.name || '' : '';
-              const departure = t.departure_stop ? t.departure_stop.name : '';
-              const arrival = t.arrival_stop ? t.arrival_stop.name : '';
-              const numStops = t.num_stops || '';
-              stepItem.transitDetail = lineName;
-              stepItem.instruction = `乘坐 ${lineName}` +
-                (departure ? `（${departure}` : '') +
-                (arrival ? ` → ${arrival}）` : departure ? '）' : '') +
-                (numStops ? ` 途经 ${numStops} 站` : '');
-            }
-
-            detail.steps.push(stepItem);
-          });
+        if (routeForm.apiMode === 'server') {
+          await calcServerRoute(originPoint, destPoint);
+          return;
         }
 
-        return detail;
-      });
+        directionsRenderer = new google.maps.DirectionsRenderer({
+          map: mapInstance
+        });
+        const directionsService = new google.maps.DirectionsService();
+        directionsService.route({
+          origin: originPoint,
+          destination: destPoint,
+          travelMode: google.maps.TravelMode[routeForm.travelMode],
+          provideRouteAlternatives: true
+        }, (result, status) => {
+          routeLoading.value = false;
+          if (status === 'OK') {
+            directionsRenderer.setDirections(result);
+            routeDetailInfo.value = parseGoogleRouteDetail(result.routes);
+            ElementPlus.ElMessage.success('路线规划成功');
+          } else {
+            routeDetailInfo.value = null;
+            ElementPlus.ElMessage.error(`路线规划失败: ${status}`);
+          }
+        });
+      } catch (error) {
+        console.error('Route error:', error);
+        ElementPlus.ElMessage.error(`路线规划失败: ${error.message}`);
+      } finally {
+        if (routeForm.apiMode === 'server') {
+          routeLoading.value = false;
+        }
+      }
     };
 
     onMounted(() => {
@@ -560,13 +739,18 @@ const app = createApp({
       searchResults,
       searchLoading,
       routeLoading,
+      locateLoading,
       serverSearchRawData,
       searchResultTab,
       doSearch,
       viewOnMap,
       quickSearch,
       locateForm,
+      nearbyResults,
+      nearbyRawData,
+      locateResultTab,
       locateInput,
+      viewNearbyOnMap,
       routeForm,
       routeDetailInfo,
       routeResults,
@@ -574,7 +758,8 @@ const app = createApp({
       calcRoute,
       copyJson: MapUtils.copyJson,
       searchJsonHtml,
-      routeJsonHtml
+      routeJsonHtml,
+      nearbyJsonHtml
     };
   }
 });
