@@ -20,11 +20,19 @@ if (typeof window !== 'undefined') {
 const app = createApp({
   setup() {
     const currentLang = ref(window.AppI18n ? window.AppI18n.getLang() : 'zh');
-    const t = (key, fallback, params) => window.AppI18n ? window.AppI18n.t(key, fallback, params) : (fallback || key);
+    const t = (key, fallback, params) => {
+      // Access currentLang.value to trigger Vue reactivity tracking
+      const lang = currentLang.value; 
+      return window.AppI18n ? window.AppI18n.t(key, fallback, params) : (fallback || key);
+    };
 
     window.addEventListener('app-language-change', (e) => {
       currentLang.value = e.detail.lang;
     });
+
+    const changeLang = (e) => {
+      if (window.AppI18n) window.AppI18n.setLang(e.target.value, { reload: false });
+    };
 
     const mapLanguage = () => (window.AppI18n && window.AppI18n.getLang() === 'en' ? 'en' : 'zh-CN');
     const BAIDU_SCRIPT_ID = 'simple-map-demo-baidu-sdk';
@@ -1061,7 +1069,9 @@ const app = createApp({
       searchJsonHtml,
       routeJsonHtml,
       nearbyJsonHtml,
-      t
+      t,
+      currentLang,
+      changeLang
     };
   }
 });

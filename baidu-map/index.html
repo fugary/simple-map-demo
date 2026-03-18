@@ -24,6 +24,13 @@
               <a href="../amap-map/index.html" class="nav-switch" :title="t('nav.amapTitle')">
                 <svg viewBox="0 0 100 130" width="11" height="14" xmlns="http://www.w3.org/2000/svg"><path d="M50 0C27.9 0 10 17.9 10 40c0 27.6 36 80 38 82.8a2.4 2.4 0 003.9 0C53.9 120 90 67.6 90 40 90 17.9 72.1 0 50 0z" fill="#FF6B35"/><circle cx="50" cy="40" r="17" fill="#fff"/></svg> {{ t('nav.amap') }}
               </a>
+              <div class="app-lang-switch">
+                <label for="app-lang-select">{{ t('common.langLabel') }}</label>
+                <select id="app-lang-select" v-model="currentLang" @change="changeLang">
+                  <option value="zh">ZH</option>
+                  <option value="en">EN</option>
+                </select>
+              </div>
             </div>
             <h2>{{ t('pages.baidu.title') }}</h2>
           </div>

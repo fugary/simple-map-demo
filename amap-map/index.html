@@ -24,6 +24,13 @@
               <a href="../google-map/index.html" class="nav-switch" :title="t('nav.googleTitle')">
                 <svg viewBox="0 0 92 132" width="12" height="17" xmlns="http://www.w3.org/2000/svg"><path d="M46 0C20.6 0 0 20.6 0 46c0 31.8 41.3 79.9 43.1 82a3.8 3.8 0 005.8 0C50.7 125.9 92 77.8 92 46 92 20.6 71.4 0 46 0z" fill="#EA4335"/><path d="M46 0v92C20.6 92 0 71.4 0 46 0 20.6 20.6 0 46 0z" fill="#1E88E5"/><circle cx="46" cy="46" r="18" fill="#fff"/></svg> {{ t('nav.google') }}
               </a>
+              <div class="app-lang-switch">
+                <label for="app-lang-select">{{ t('common.langLabel') }}</label>
+                <select id="app-lang-select" v-model="currentLang" @change="changeLang">
+                  <option value="zh">ZH</option>
+                  <option value="en">EN</option>
+                </select>
+              </div>
             </div>
             <h2>{{ t('pages.amap.title') }}</h2>
           </div>

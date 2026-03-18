@@ -57,7 +57,19 @@ citsgbt-map-demo/
 2. 在 `eslint.config.mjs` 添加该目录的全局变量配置
 3. 在 `index.html` 入口页添加卡片入口
 
-## 3. 技术栈
+## 3. 开发规范与避坑指南
+
+### 3.1 Vue 组件化而非原生 DOM 操作
+虽然为了轻量化项目我们使用了直接在 HTML 中引入 Vue 的方式，但必须严格遵守 Vue 的**数据驱动与声明式渲染**思想，严禁“原生混用”导致响应式丢失：
+- **禁止原生 DOM 注入**：不得在业务代码或工具类库（如 `i18n.js`）中使用 `document.createElement`、`.innerHTML` 或是 `appendChild` 将 UI 元素（如语言切换下拉框等 UI 控件）强行推入 Vue 所管理的 `<div id="app">` 中。
+- **模板层管理**：所有的下拉框、弹窗等 UI 组件必须老老实实写在 `index.html` 的 Vue 模板定义内，使用 `v-model` 或 `@click` 绑定事件并使用 `setup()` 导出。
+
+### 3.2 国际化 (i18n) 响应式更新原理
+由于 `i18n.t()` 翻译函数需要被大量写在 Vue 模板中（如 `{{ t('common.name') }}`），如果 `t()` 执行时内部仅仅是调用非响应式的原生逻辑或读取 `localStorage`，Vue 就无法识别到依赖追踪，导致语言切换时页面文本不刷新。
+- **绑定响应式引用**：在 `setup()` 暴露出 `t` 函数时，必须在函数体内部显式地触碰一次响应式变量（例如 `const lang = currentLang.value;`），以此触发 Vue 的 Proxy getter，使模板正确订阅 `currentLang` 的变化。
+- **语言切换无刷新**：不要使用 `window.location.reload()` 刷新整个网页来更新语言。使用 `window.dispatchEvent` 抛出全局自定义事件（如 `app-language-change`），在每个地图组件的 `setup()` 中监听并同步修改 `currentLang.value`。仅针对无法实时改变外语类型的第三方图商 SDK（如 Google / Amap）做**局部 `<script>` 卸载重载**。
+
+## 4. 技术栈
 - **框架**：Vue 3 (CDN)
 - **UI 库**：Element Plus (CDN)
 - **地图引擎**：百度地图 JavaScript API GL / Google Maps JavaScript API
