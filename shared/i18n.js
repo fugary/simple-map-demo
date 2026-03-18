@@ -169,7 +169,7 @@ const injectLangSwitch = () => {
     wrapper.className = 'app-lang-switch';
     wrapper.innerHTML = `
       <label for="app-lang-select">${t('common.langLabel')}</label>
-      <select id="app-lang-select">
+      <select id="app-lang-select" onchange="window.AppI18n && window.AppI18n.setLang(this.value, { reload: true })">
         <option value="zh">ZH</option>
         <option value="en">EN</option>
       </select>
@@ -182,7 +182,7 @@ const injectLangSwitch = () => {
     wrapper.className = 'app-lang-switch app-lang-switch-floating';
     wrapper.innerHTML = `
       <label for="app-lang-select">${t('common.langLabel')}</label>
-      <select id="app-lang-select">
+      <select id="app-lang-select" onchange="window.AppI18n && window.AppI18n.setLang(this.value, { reload: true })">
         <option value="zh">ZH</option>
         <option value="en">EN</option>
       </select>
@@ -193,8 +193,16 @@ const injectLangSwitch = () => {
   const select = document.getElementById('app-lang-select');
   if (select) {
     select.value = getLang();
-    select.addEventListener('change', (event) => {
-      setLang(event.target.value, { reload: true });
+  }
+
+  // Use event delegation so the handler survives Vue DOM replacement
+  if (!window.__langSwitchDelegated) {
+    window.__langSwitchDelegated = true;
+    document.addEventListener('change', (event) => {
+      if (event.target && event.target.id === 'app-lang-select') {
+        console.log('[i18n] Language switch triggered:', event.target.value);
+        setLang(event.target.value, { reload: true });
+      }
     });
   }
 };
@@ -209,6 +217,19 @@ const bootstrap = () => {
   injectStyles();
   injectLangSwitch();
   applyLanguage();
+
+  // Re-sync the language select value after Vue re-renders the DOM.
+  // Vue may replace DOM elements after bootstrap, losing the initial select value.
+  const syncLangSelect = () => {
+    const select = document.getElementById('app-lang-select');
+    if (select && select.value !== getLang()) {
+      select.value = getLang();
+    }
+  };
+  // Retry a few times to catch Vue's async mount
+  setTimeout(syncLangSelect, 100);
+  setTimeout(syncLangSelect, 500);
+  setTimeout(syncLangSelect, 1500);
 };
 
 export const AppI18n = {

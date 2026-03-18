@@ -1,6 +1,6 @@
 /* global fetch, URLSearchParams */
 import { createApp, ref, onMounted, reactive, markRaw, computed } from 'vue';
-import ElementPlus from 'element-plus';
+import ElementPlus, { ElMessage } from 'element-plus';
 import 'element-plus/dist/index.css';
 import { MapUtils } from '../shared/utils.js';
 import {
@@ -27,7 +27,7 @@ const app = createApp({
     const serverAkList = ref([]);
     const serverAk = ref('');
     const regionList = ref([]);
-    const globalRegion = ref('全国');
+    const globalRegion = ref('New York');
     const mapReady = ref(false);
     const activeTab = ref('config');
     const mapScope = ref('domestic');
@@ -43,7 +43,7 @@ const app = createApp({
 
     const searchForm = reactive({
       apiMode: 'webgl',
-      keyword: '时报广场',
+      keyword: 'Empire State Building',
       count: 10
     });
     const searchResults = ref([]);
@@ -65,8 +65,8 @@ const app = createApp({
     const routeForm = reactive({
       apiMode: 'webgl',
       travelMode: 'driving',
-      start: '',
-      end: '',
+      start: 'Times Square',
+      end: 'Empire State Building',
       startCoords: '',
       endCoords: ''
     });
@@ -270,7 +270,7 @@ const app = createApp({
 
     const loadBaiduMap = () => {
       if (!browserAk.value && !serverAk.value) {
-        ElementPlus.ElMessage.warning('至少配置一个 AK 才能继续');
+        ElMessage.warning('至少配置一个 AK 才能继续');
         return;
       }
 
@@ -304,7 +304,7 @@ const app = createApp({
       script.src = `https://api.map.baidu.com/api?v=1.0&type=webgl&ak=${browserAk.value}&language=${desiredLang}&callback=initBaiduMapCallback&_=${Date.now()}`;
       script.onerror = () => {
         mapLoading.value = false;
-        ElementPlus.ElMessage.error('百度地图引擎加载失败，请检查 AK 或网络');
+        ElMessage.error('百度地图引擎加载失败，请检查 AK 或网络');
       };
       document.body.appendChild(script);
     };
@@ -435,7 +435,7 @@ const app = createApp({
       } catch (error) {
         console.error(error);
         mapLoading.value = false;
-        ElementPlus.ElMessage.error('地图初始化失败，请检查 AK 是否合法');
+        ElMessage.error('地图初始化失败，请检查 AK 是否合法');
       }
     };
 
@@ -450,7 +450,7 @@ const app = createApp({
         if (searchForm.apiMode === 'google') {
           const config = getGoogleConfig();
           if (!config) {
-            ElementPlus.ElMessage.warning('请先配置 Google Maps API Key');
+            ElMessage.warning('请先配置 Google Maps API Key');
             return;
           }
 
@@ -472,7 +472,7 @@ const app = createApp({
 
         if (searchForm.apiMode === 'server') {
           if (!serverAk.value) {
-            ElementPlus.ElMessage.warning('请先配置服务端 AK');
+            ElMessage.warning('请先配置服务端 AK');
             return;
           }
 
@@ -515,7 +515,7 @@ const app = createApp({
         console.error(error);
         searchResults.value = [];
         serverSearchRawData.value = null;
-        ElementPlus.ElMessage.error(`地点搜索失败: ${error.message}`);
+        ElMessage.error(`地点搜索失败: ${error.message}`);
       } finally {
         searchLoading.value = false;
       }
@@ -540,7 +540,7 @@ const app = createApp({
       if (!mapInstance) return;
       activeTab.value = 'search';
       searchForm.keyword = keyword;
-      if (!globalRegion.value) globalRegion.value = '北京';
+      if (!globalRegion.value) globalRegion.value = 'New York';
       doSearch();
     };
 
@@ -613,7 +613,7 @@ const app = createApp({
           }
           if (!originalGoogleCenter) {
             locateForm.resolvedCoords = '';
-            ElementPlus.ElMessage.warning('Google中心点解析失败');
+            ElMessage.warning('Google中心点解析失败');
             return;
           }
           const bdCoords = MapUtils.googleToBaiduCoords(originalGoogleCenter.lng, originalGoogleCenter.lat);
@@ -623,7 +623,7 @@ const app = createApp({
           const center = await getCoordsByMode(input, locateForm.apiMode);
           if (!center) {
             locateForm.resolvedCoords = '';
-            ElementPlus.ElMessage.warning('中心点解析失败');
+            ElMessage.warning('中心点解析失败');
             return;
           }
           centerPoint = new window.BMapGL.Point(center.lng, center.lat);
@@ -645,7 +645,7 @@ const app = createApp({
           nearbyResults.value = result.items;
         } else if (locateForm.apiMode === 'server') {
           if (!serverAk.value) {
-            ElementPlus.ElMessage.warning('附近搜索需要先配置服务端 AK');
+            ElMessage.warning('附近搜索需要先配置服务端 AK');
             return;
           }
 
@@ -667,7 +667,7 @@ const app = createApp({
         locateForm.resolvedCoords = '';
         nearbyResults.value = [];
         nearbyRawData.value = null;
-        ElementPlus.ElMessage.error(`附近搜索失败: ${error.message}`);
+        ElMessage.error(`附近搜索失败: ${error.message}`);
       } finally {
         locateLoading.value = false;
       }
@@ -796,7 +796,8 @@ const app = createApp({
         destination: `${destination.lat},${destination.lng}`,
         mode: modeMap[routeForm.travelMode] || 'driving',
         alternatives: 'true',
-        key: config.apiKey
+        key: config.apiKey,
+        language: mapLanguage()
       })}`;
 
       const raw = await fetch(url).then((response) => response.json());
@@ -832,7 +833,7 @@ const app = createApp({
           const originalDestination = await resolveGoogleCoordsRaw(routeForm.end);
           if (!originalOrigin || !originalDestination) {
             routeLoading.value = false;
-            ElementPlus.ElMessage.error('无法解析 Google 路线起终点');
+            ElMessage.error('无法解析 Google 路线起终点');
             return;
           }
 
@@ -845,7 +846,7 @@ const app = createApp({
           await calcGoogleRouteForBaidu(originalOrigin, originalDestination);
         } catch (error) {
           console.error(error);
-          ElementPlus.ElMessage.error(`Google 路线数据转换失败: ${error.message}`);
+          ElMessage.error(`Google 路线数据转换失败: ${error.message}`);
         } finally {
           routeLoading.value = false;
         }
@@ -854,8 +855,16 @@ const app = createApp({
 
       const origin = await getCoords(routeForm.start);
       const destination = await getCoords(routeForm.end);
-      if (!origin || !destination) {
+      if (!origin) {
+        routeForm.startCoords = '解析失败';
         routeLoading.value = false;
+        ElMessage.error(`无法解析起点地址: ${routeForm.start}`);
+        return;
+      }
+      if (!destination) {
+        routeForm.endCoords = '解析失败';
+        routeLoading.value = false;
+        ElMessage.error(`无法解析终点地址: ${routeForm.end}`);
         return;
       }
 
@@ -869,7 +878,8 @@ const app = createApp({
       if (routeForm.apiMode === 'server') {
         try {
           if (!serverAk.value) {
-            ElementPlus.ElMessage.warning('请先配置服务端 AK');
+            routeLoading.value = false;
+            ElMessage.warning('请先配置服务端 AK');
             return;
           }
 
@@ -887,7 +897,14 @@ const app = createApp({
                 showRouteEndpoints: true
               });
             }
+            ElMessage.success('路线规划成功');
+          } else {
+            routeDetailInfo.value = null;
+            ElMessage.error(`路线规划失败: ${res.info || res.message || 'Unknown'}`);
           }
+        } catch (error) {
+          console.error(error);
+          ElMessage.error(`路线规划失败: ${error.message}`);
         } finally {
           routeLoading.value = false;
         }
@@ -896,7 +913,7 @@ const app = createApp({
 
       if (mapScope.value === 'international') {
         routeLoading.value = false;
-        ElementPlus.ElMessage.warning('百度 WebGL 前端引擎不支持国际路线规划，请切换为“服务端”或“Google”模式');
+        ElMessage.warning('百度 WebGL 前端引擎不支持国际路线规划，请切换为“服务端”或“Google”模式');
         if (window.BaiduRouteDrawer) {
           window.BaiduRouteDrawer.drawRouteEndpoints(mapInstance, origin, destination);
         }
@@ -911,7 +928,7 @@ const app = createApp({
           try {
             if (!routeInstance || routeInstance.getStatus() !== window.BMAP_STATUS_SUCCESS) {
               routeDetailInfo.value = null;
-              ElementPlus.ElMessage.warning('未能找到有效路线');
+              ElMessage.warning('未能找到有效路线');
               if (window.BaiduRouteDrawer) {
                 window.BaiduRouteDrawer.drawRouteEndpoints(mapInstance, origin, destination);
               }
@@ -937,11 +954,15 @@ const app = createApp({
                 });
               }
               routeDetailInfo.value = detail;
+              ElMessage.success('路线规划成功');
               return;
             }
 
             const plan = result.getPlan ? result.getPlan(0) : null;
-            if (!plan) return;
+            if (!plan) {
+              ElMessage.warning('未能找到有效路线');
+              return;
+            }
 
             const detail = {
               index: 1,
@@ -965,8 +986,10 @@ const app = createApp({
               }
             }
             routeDetailInfo.value = [detail];
+            ElMessage.success('路线规划成功');
           } catch (error) {
             console.warn('提取 WebGL 路线详情失败:', error);
+            ElMessage.error(`路线规划失败: ${error.message}`);
           }
         }
       };
@@ -976,7 +999,7 @@ const app = createApp({
       if (routeForm.travelMode === 'walking') routeInstance = new window.BMapGL.WalkingRoute(mapInstance, opts);
       if (!routeInstance) {
         routeLoading.value = false;
-        ElementPlus.ElMessage.warning('WebGL 模式暂不支持骑行');
+        ElMessage.warning('当前出行方式暂不支持');
         return;
       }
 

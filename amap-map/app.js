@@ -1,6 +1,6 @@
 /* global AMap */
 import { createApp, ref, onMounted, reactive, markRaw, computed } from 'vue';
-import ElementPlus from 'element-plus';
+import ElementPlus, { ElMessage } from 'element-plus';
 import 'element-plus/dist/index.css';
 import { MapUtils } from '../shared/utils.js';
 import '../shared/i18n.js';
@@ -12,8 +12,12 @@ if (typeof window !== 'undefined') {
 
 const app = createApp({
   setup() {
-    const mapLanguage = () =>
-      window.AppI18n && window.AppI18n.getLang() === 'en' ? 'en' : 'zh_cn';
+    const mapLanguage = () => {
+      const lang = window.AppI18n && window.AppI18n.getLang();
+      const result = lang === 'en' ? 'en' : 'zh_cn';
+      console.log('[Amap mapLanguage] AppI18n.getLang()=', lang, '=> mapLanguage=', result);
+      return result;
+    };
     const AMAP_SCRIPT_ID = 'simple-map-demo-amap-sdk';
 
     const browserAkList = ref([]);
@@ -22,7 +26,7 @@ const app = createApp({
     const serverAk = ref('');
     const browserSecurityCode = ref('');
     const regionList = ref([]);
-    const globalRegion = ref('全国');
+    const globalRegion = ref('上海');
     const mapReady = ref(false);
     const activeTab = ref('config');
     let mapInstance = null;
@@ -36,7 +40,7 @@ const app = createApp({
 
     const searchForm = reactive({
       apiMode: 'jsapi',
-      keyword: '时报广场',
+      keyword: '人民广场',
       count: 10
     });
     const searchResults = ref([]);
@@ -57,8 +61,8 @@ const app = createApp({
     const routeForm = reactive({
       apiMode: 'jsapi',
       travelMode: 'driving',
-      start: '',
-      end: '',
+      start: '人民广场',
+      end: '正大广场',
       startCoords: '',
       endCoords: ''
     });
@@ -173,7 +177,7 @@ const app = createApp({
 
     const loadAmap = () => {
       if (!browserAk.value && !serverAk.value) {
-        ElementPlus.ElMessage.warning('至少配置一个 AK 才能继续');
+        ElMessage.warning('至少配置一个 AK 才能继续');
         return;
       }
 
@@ -189,7 +193,7 @@ const app = createApp({
       if (!browserAk.value) {
         mapReady.value = true;
         mapLoading.value = false;
-        ElementPlus.ElMessage.info('未填浏览器端 AK，仅可使用服务端模式相关功能');
+        ElMessage.info('未填浏览器端 AK，仅可使用服务端模式相关功能');
         return;
       }
 
@@ -222,7 +226,7 @@ const app = createApp({
       script.src = `https://webapi.amap.com/maps?v=1.4.15&key=${browserAk.value}&lang=${desiredLang}&plugin=AMap.PlaceSearch,AMap.Driving,AMap.Transfer,AMap.Walking,AMap.Riding,AMap.Geocoder,AMap.ToolBar,AMap.Scale&callback=initAmapCallback&_=${Date.now()}`;
       script.onerror = () => {
         mapLoading.value = false;
-        ElementPlus.ElMessage.error('高德地图引擎加载失败，请检查 AK/SecurityCode 或网络');
+        ElMessage.error('高德地图引擎加载失败，请检查 AK/SecurityCode 或网络');
       };
       document.body.appendChild(script);
     };
@@ -304,17 +308,17 @@ const app = createApp({
 
         mapReady.value = true;
         mapLoading.value = false;
-        ElementPlus.ElMessage.success('地图加载成功');
+        ElMessage.success('地图加载成功');
       } catch (error) {
         console.error('Map init error:', error);
         mapLoading.value = false;
-        ElementPlus.ElMessage.error('地图初始化失败，请检查 AK/SecurityCode 是否合法并已授权域名');
+        ElMessage.error('地图初始化失败，请检查 AK/SecurityCode 是否合法并已授权域名');
       }
     };
 
     const doSearch = async () => {
       if (!searchForm.keyword) {
-        ElementPlus.ElMessage.warning('请输入查询关键字');
+        ElMessage.warning('请输入查询关键字');
         return;
       }
 
@@ -324,7 +328,7 @@ const app = createApp({
       if (searchForm.apiMode === 'server') {
         if (!serverAk.value) {
           searchLoading.value = false;
-          ElementPlus.ElMessage.warning('需要配置服务端 AK');
+          ElMessage.warning('需要配置服务端 AK');
           return;
         }
 
@@ -340,15 +344,16 @@ const app = createApp({
                 const [lng, lat] = poi.location.split(',');
                 return buildPointItem(poi.name, poi.address || poi.adname, lng, lat, poi);
               });
-            ElementPlus.ElMessage.success(`服务端 API 找到 ${searchResults.value.length} 条结果`);
+            renderPointItems(null, searchResults.value);
+            ElMessage.success(`服务端 API 找到 ${searchResults.value.length} 条结果`);
           } else {
             searchResults.value = [];
-            ElementPlus.ElMessage.error(`服务端搜索失败: ${res.info || 'Unknown'}`);
+            ElMessage.error(`服务端搜索失败: ${res.info || 'Unknown'}`);
           }
         } catch (error) {
           console.error(error);
           searchResults.value = [];
-          ElementPlus.ElMessage.error('服务端搜索请求失败');
+          ElMessage.error('服务端搜索请求失败');
         } finally {
           searchLoading.value = false;
         }
@@ -378,13 +383,13 @@ const app = createApp({
             );
           } else {
             searchResults.value = [];
-            ElementPlus.ElMessage.info(`未找到相关结果或查询失败 (${status})`);
+            ElMessage.info(`未找到相关结果或查询失败 (${status})`);
           }
         });
       } catch (error) {
         console.error(error);
         searchLoading.value = false;
-        ElementPlus.ElMessage.error('前端检索失败');
+        ElMessage.error('前端检索失败');
       }
     };
 
@@ -427,7 +432,7 @@ const app = createApp({
         const center = await getCoords(input);
         if (!center) {
           locateForm.resolvedCoords = '';
-          ElementPlus.ElMessage.warning('地址解析失败');
+          ElMessage.warning('地址解析失败');
           return;
         }
 
@@ -441,7 +446,7 @@ const app = createApp({
 
         if (locateForm.apiMode === 'server') {
           if (!serverAk.value) {
-            ElementPlus.ElMessage.warning('附近搜索需要配置服务端 AK');
+            ElMessage.warning('附近搜索需要配置服务端 AK');
             return;
           }
 
@@ -458,7 +463,7 @@ const app = createApp({
               });
           } else {
             nearbyResults.value = [];
-            ElementPlus.ElMessage.warning(`附近搜索失败: ${res.info || 'Unknown'}`);
+            ElMessage.warning(`附近搜索失败: ${res.info || 'Unknown'}`);
           }
         } else {
           const placeSearch = new AMap.PlaceSearch({
@@ -487,7 +492,7 @@ const app = createApp({
         console.error(error);
         locateForm.resolvedCoords = '';
         nearbyResults.value = [];
-        ElementPlus.ElMessage.error(`附近搜索失败: ${error.message}`);
+        ElMessage.error(`附近搜索失败: ${error.message}`);
       } finally {
         locateLoading.value = false;
       }
@@ -542,7 +547,7 @@ const app = createApp({
 
     const calcRoute = async () => {
       if (!routeForm.start || !routeForm.end) {
-        ElementPlus.ElMessage.warning('请输入完整起点和终点');
+        ElMessage.warning('请输入完整起点和终点');
         return;
       }
 
@@ -554,7 +559,7 @@ const app = createApp({
       if (!origin) {
         routeForm.startCoords = '解析失败';
         routeLoading.value = false;
-        ElementPlus.ElMessage.error(`无法解析起点地址: ${routeForm.start}`);
+        ElMessage.error(`无法解析起点地址: ${routeForm.start}`);
         return;
       }
       routeForm.startCoords = MapUtils.parseCoords(routeForm.start)
@@ -565,7 +570,7 @@ const app = createApp({
       if (!destination) {
         routeForm.endCoords = '解析失败';
         routeLoading.value = false;
-        ElementPlus.ElMessage.error(`无法解析终点地址: ${routeForm.end}`);
+        ElMessage.error(`无法解析终点地址: ${routeForm.end}`);
         return;
       }
       routeForm.endCoords = MapUtils.parseCoords(routeForm.end)
@@ -577,7 +582,7 @@ const app = createApp({
       if (routeForm.apiMode === 'server') {
         if (!serverAk.value) {
           routeLoading.value = false;
-          ElementPlus.ElMessage.warning('需要配置服务端 AK');
+          ElMessage.warning('需要配置服务端 AK');
           return;
         }
 
@@ -604,13 +609,13 @@ const app = createApp({
                 endName: '终'
               });
             }
-            ElementPlus.ElMessage.success('路线规划成功');
+            ElMessage.success('路线规划成功');
           } else {
-            ElementPlus.ElMessage.error(`路线规划失败: ${res.info || 'Unknown'}`);
+            ElMessage.error(`路线规划失败: ${res.info || 'Unknown'}`);
           }
         } catch (error) {
           console.error(error);
-          ElementPlus.ElMessage.error(`路线规划失败: ${error.message}`);
+          ElMessage.error(`路线规划失败: ${error.message}`);
         } finally {
           routeLoading.value = false;
         }
@@ -625,7 +630,7 @@ const app = createApp({
 
       if (!PluginClass) {
         routeLoading.value = false;
-        ElementPlus.ElMessage.warning('当前出行方式暂不支持');
+        ElMessage.warning('当前出行方式暂不支持');
         return;
       }
 
@@ -655,7 +660,7 @@ const app = createApp({
           }
         } else {
           routeDetailInfo.value = null;
-        ElementPlus.ElMessage.warning(`路线规划失败: ${status}`);
+          ElMessage.warning(`路线规划失败: ${status}`);
         }
       });
     };

@@ -1,5 +1,12 @@
 const DEFAULT_GOOGLE_PROXY_BASE = 'https://mock-dev.citsgbt.com/mock/3471f5ba61824bfea6efb264d70e235d';
 
+const getGoogleLanguage = () => {
+  const lang = (typeof window !== 'undefined' && window.AppI18n) ? window.AppI18n.getLang() : null;
+  const result = lang === 'en' ? 'en' : 'zh-CN';
+  console.log('[google-provider] AppI18n.getLang()=', lang, '=> language=', result);
+  return result;
+};
+
 const getStoredGoogleConfig = () => {
   const apiKeys = JSON.parse(localStorage.getItem('google_map_api_keys') || '[]');
   const regions = JSON.parse(localStorage.getItem('google_map_regions') || '[]');
@@ -46,7 +53,8 @@ const googleTextSearch = async ({ query, region = '', count = 10, config } = {})
   const finalConfig = ensureGoogleConfig(config);
   const params = {
     query,
-    key: finalConfig.apiKey
+    key: finalConfig.apiKey,
+    language: getGoogleLanguage()
   };
   if (region) params.region = region;
 
@@ -65,7 +73,8 @@ const googleNearbySearch = async ({ location, keyword = '', radius = 2000, count
     location: `${location.lat},${location.lng}`,
     keyword,
     radius: String(radius || 2000),
-    key: finalConfig.apiKey
+    key: finalConfig.apiKey,
+    language: getGoogleLanguage()
   }, finalConfig)).then((response) => response.json());
 
   return {
@@ -80,7 +89,8 @@ const googleGeocode = async ({ address, config } = {}) => {
   const finalConfig = ensureGoogleConfig(config);
   const raw = await fetch(buildProxyUrl('geocode/json', {
     address,
-    key: finalConfig.apiKey
+    key: finalConfig.apiKey,
+    language: getGoogleLanguage()
   }, finalConfig)).then((response) => response.json());
 
   const first = raw && raw.status === 'OK' && Array.isArray(raw.results) ? raw.results[0] : null;

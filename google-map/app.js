@@ -1,5 +1,5 @@
 import { createApp, ref, onMounted, reactive, markRaw, computed } from 'vue';
-import ElementPlus from 'element-plus';
+import ElementPlus, { ElMessage } from 'element-plus';
 import 'element-plus/dist/index.css';
 import { MapUtils } from '../shared/utils.js';
 import '../shared/i18n.js';
@@ -11,15 +11,19 @@ if (typeof window !== 'undefined') {
 
 const app = createApp({
   setup() {
-    const mapLanguage = () =>
-      window.AppI18n && window.AppI18n.getLang() === 'en' ? 'en' : 'zh-CN';
+    const mapLanguage = () => {
+      const lang = window.AppI18n && window.AppI18n.getLang();
+      const result = lang === 'en' ? 'en' : 'zh-CN';
+      console.log('[Google mapLanguage] AppI18n.getLang()=', lang, '=> mapLanguage=', result);
+      return result;
+    };
     const mapRegion = () =>
       window.AppI18n && window.AppI18n.getLang() === 'en' ? 'US' : 'CN';
 
     const apiKeyList = ref([]);
     const apiKey = ref('');
     const regionList = ref([]);
-    const globalRegion = ref('');
+    const globalRegion = ref('New York');
     const proxyBaseUrl = ref(DEFAULT_PROXY_BASE);
     const mapReady = ref(false);
     const activeTab = ref('config');
@@ -38,7 +42,7 @@ const app = createApp({
 
     const searchForm = reactive({
       apiMode: 'frontend',
-      keyword: 'Times Square',
+      keyword: 'Empire State Building',
       count: 10
     });
     const searchResults = ref([]);
@@ -60,8 +64,8 @@ const app = createApp({
     const routeForm = reactive({
       apiMode: 'frontend',
       travelMode: 'DRIVING',
-      start: '',
-      end: '',
+      start: 'Times Square',
+      end: 'Empire State Building',
       startCoords: '',
       endCoords: ''
     });
@@ -166,7 +170,7 @@ const app = createApp({
 
     const loadGoogleMap = () => {
       if (!apiKey.value) {
-        ElementPlus.ElMessage.warning('请输入 Google Maps API Key');
+        ElMessage.warning('请输入 Google Maps API Key');
         return;
       }
 
@@ -187,7 +191,7 @@ const app = createApp({
       script.type = 'text/javascript';
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey.value}&libraries=places,geometry&language=${mapLanguage()}&region=${mapRegion()}&callback=initGoogleMapCallback`;
       script.onerror = () => {
-        ElementPlus.ElMessage.error('Google Maps 加载失败，请检查 API Key 或网络');
+        ElMessage.error('Google Maps 加载失败，请检查 API Key 或网络');
       };
       document.body.appendChild(script);
     };
@@ -210,10 +214,10 @@ const app = createApp({
         }));
 
         mapReady.value = true;
-        ElementPlus.ElMessage.success('Google Maps 加载成功');
+        ElMessage.success('Google Maps 加载成功');
       } catch (error) {
         console.error('Map init error:', error);
-        ElementPlus.ElMessage.error('地图初始化失败，请检查 API Key 是否合法');
+        ElMessage.error('地图初始化失败，请检查 API Key 是否合法');
       }
     };
 
@@ -309,7 +313,7 @@ const app = createApp({
 
     const doSearch = async () => {
       if (!searchForm.keyword) {
-        ElementPlus.ElMessage.warning('请输入查询关键字');
+        ElMessage.warning('请输入查询关键字');
         return;
       }
 
@@ -334,15 +338,15 @@ const app = createApp({
               .slice(0, searchForm.count || 10)
               .map((item) => mapSearchResult(item, true));
             renderSearchResults(searchResults.value);
-            ElementPlus.ElMessage.success(`服务端 API 找到 ${searchResults.value.length} 条结果`);
+            ElMessage.success(`服务端 API 找到 ${searchResults.value.length} 条结果`);
           } else {
             searchResults.value = [];
-            ElementPlus.ElMessage.warning(`服务端搜索失败: ${res.status || 'Unknown'}`);
+            ElMessage.warning(`服务端搜索失败: ${res.status || 'Unknown'}`);
           }
         } catch (error) {
           console.error('Server search error:', error);
           searchResults.value = [];
-          ElementPlus.ElMessage.error(`服务端搜索请求失败: ${error.message}`);
+          ElMessage.error(`服务端搜索请求失败: ${error.message}`);
         } finally {
           searchLoading.value = false;
         }
@@ -372,10 +376,10 @@ const app = createApp({
             .slice(0, searchForm.count || 10)
             .map((item) => mapSearchResult(item, false));
           renderSearchResults(searchResults.value);
-          ElementPlus.ElMessage.success(`找到 ${searchResults.value.length} 条结果`);
+          ElMessage.success(`找到 ${searchResults.value.length} 条结果`);
         } else {
           searchResults.value = [];
-          ElementPlus.ElMessage.info(`未找到相关结果 (${status})`);
+          ElMessage.info(`未找到相关结果 (${status})`);
         }
       });
     };
@@ -504,7 +508,7 @@ const app = createApp({
 
       const input = locateForm.input.trim();
       if (!input) {
-        ElementPlus.ElMessage.warning('请输入地址或经纬度');
+        ElMessage.warning('请输入地址或经纬度');
         return;
       }
 
@@ -517,7 +521,7 @@ const app = createApp({
         const centerPoint = await resolveLocation(input, locateForm.apiMode);
         if (!centerPoint) {
           locateForm.resolvedCoords = '';
-          ElementPlus.ElMessage.warning('地址解析失败');
+          ElMessage.warning('地址解析失败');
           return;
         }
 
@@ -525,7 +529,7 @@ const app = createApp({
 
         if (!locateForm.nearbyKeyword.trim()) {
           renderNearbyResults(centerPoint, []);
-          ElementPlus.ElMessage.success('中心点解析成功');
+          ElMessage.success('中心点解析成功');
           return;
         }
 
@@ -543,16 +547,16 @@ const app = createApp({
 
         renderNearbyResults(centerPoint, nearbyResults.value);
         if (nearbyResults.value.length > 0) {
-          ElementPlus.ElMessage.success(`找到 ${nearbyResults.value.length} 条附近结果`);
+          ElMessage.success(`找到 ${nearbyResults.value.length} 条附近结果`);
         } else {
-          ElementPlus.ElMessage.info('未找到附近结果');
+          ElMessage.info('未找到附近结果');
         }
       } catch (error) {
         console.error('Nearby search failed:', error);
         locateForm.resolvedCoords = '';
         nearbyResults.value = [];
         nearbyRawData.value = null;
-        ElementPlus.ElMessage.error(`附近搜索失败: ${error.message}`);
+        ElMessage.error(`附近搜索失败: ${error.message}`);
       } finally {
         locateLoading.value = false;
       }
@@ -653,16 +657,16 @@ const app = createApp({
       if (res && res.status === 'OK' && Array.isArray(res.routes)) {
         routeDetailInfo.value = parseGoogleRouteDetail(res.routes);
         renderServerRoute(res, originPoint, destPoint);
-        ElementPlus.ElMessage.success('路线规划成功');
+        ElMessage.success('路线规划成功');
       } else {
         routeDetailInfo.value = null;
-        ElementPlus.ElMessage.error(`路线规划失败: ${res.status || 'Unknown'}`);
+        ElMessage.error(`路线规划失败: ${res.status || 'Unknown'}`);
       }
     };
 
     const calcRoute = async () => {
       if (!routeForm.start || !routeForm.end) {
-        ElementPlus.ElMessage.warning('请输入完整起点和终点');
+        ElMessage.warning('请输入完整起点和终点');
         return;
       }
       if (!mapReady.value || !mapInstance) return;
@@ -675,7 +679,7 @@ const app = createApp({
       if (!originPoint) {
         routeForm.startCoords = '解析失败';
         routeLoading.value = false;
-        ElementPlus.ElMessage.error(`无法解析起点地址: ${routeForm.start}`);
+        ElMessage.error(`无法解析起点地址: ${routeForm.start}`);
         return;
       }
       routeForm.startCoords = MapUtils.parseCoords(routeForm.start)
@@ -686,7 +690,7 @@ const app = createApp({
       if (!destPoint) {
         routeForm.endCoords = '解析失败';
         routeLoading.value = false;
-        ElementPlus.ElMessage.error(`无法解析终点地址: ${routeForm.end}`);
+        ElMessage.error(`无法解析终点地址: ${routeForm.end}`);
         return;
       }
       routeForm.endCoords = MapUtils.parseCoords(routeForm.end)
@@ -717,15 +721,15 @@ const app = createApp({
           if (status === 'OK') {
             directionsRenderer.setDirections(result);
             routeDetailInfo.value = parseGoogleRouteDetail(result.routes);
-            ElementPlus.ElMessage.success('路线规划成功');
+            ElMessage.success('路线规划成功');
           } else {
             routeDetailInfo.value = null;
-            ElementPlus.ElMessage.error(`路线规划失败: ${status}`);
+            ElMessage.error(`路线规划失败: ${status}`);
           }
         });
       } catch (error) {
         console.error('Route error:', error);
-        ElementPlus.ElMessage.error(`路线规划失败: ${error.message}`);
+        ElMessage.error(`路线规划失败: ${error.message}`);
       } finally {
         if (routeForm.apiMode === 'server') {
           routeLoading.value = false;
