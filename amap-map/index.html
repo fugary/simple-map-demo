@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>高德地图测试页面</title>
+  <title>Map Web API Platform</title>
 
   <link rel="stylesheet" href="../shared/common.css">
   <link rel="stylesheet" href="style.css">
@@ -15,77 +15,77 @@
         <el-config-provider size="small">
           <div class="sidebar-header">
             <div class="sidebar-nav">
-              <a href="../index.html" class="nav-home" title="返回首页">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> 首页
+              <a href="../index.html" class="nav-home" :title="t('nav.homeTitle')">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> {{ t('nav.home') }}
               </a>
-              <a href="../baidu-map/index.html" class="nav-switch" title="切换到百度地图">
-                <svg viewBox="0 0 100 100" width="14" height="14" xmlns="http://www.w3.org/2000/svg"><ellipse cx="38" cy="22" rx="10" ry="13" fill="#2932E1"/><ellipse cx="62" cy="22" rx="10" ry="13" fill="#2932E1"/><ellipse cx="20" cy="40" rx="8" ry="11" fill="#2932E1"/><ellipse cx="80" cy="40" rx="8" ry="11" fill="#2932E1"/><path d="M50 38C28 38 18 54 20 70C22 84 32 92 50 92C68 92 78 84 80 70C82 54 72 38 50 38Z" fill="#2932E1"/></svg> 百度地图
+              <a href="../baidu-map/index.html" class="nav-switch" :title="t('nav.baiduTitle')">
+                <svg viewBox="0 0 100 100" width="14" height="14" xmlns="http://www.w3.org/2000/svg"><ellipse cx="38" cy="22" rx="10" ry="13" fill="#2932E1"/><ellipse cx="62" cy="22" rx="10" ry="13" fill="#2932E1"/><ellipse cx="20" cy="40" rx="8" ry="11" fill="#2932E1"/><ellipse cx="80" cy="40" rx="8" ry="11" fill="#2932E1"/><path d="M50 38C28 38 18 54 20 70C22 84 32 92 50 92C68 92 78 84 80 70C82 54 72 38 50 38Z" fill="#2932E1"/></svg> {{ t('nav.baidu') }}
               </a>
-              <a href="../google-map/index.html" class="nav-switch" title="切换到 Google Maps">
-                <svg viewBox="0 0 92 132" width="12" height="17" xmlns="http://www.w3.org/2000/svg"><path d="M46 0C20.6 0 0 20.6 0 46c0 31.8 41.3 79.9 43.1 82a3.8 3.8 0 005.8 0C50.7 125.9 92 77.8 92 46 92 20.6 71.4 0 46 0z" fill="#EA4335"/><path d="M46 0v92C20.6 92 0 71.4 0 46 0 20.6 20.6 0 46 0z" fill="#1E88E5"/><circle cx="46" cy="46" r="18" fill="#fff"/></svg> Google Maps
+              <a href="../google-map/index.html" class="nav-switch" :title="t('nav.googleTitle')">
+                <svg viewBox="0 0 92 132" width="12" height="17" xmlns="http://www.w3.org/2000/svg"><path d="M46 0C20.6 0 0 20.6 0 46c0 31.8 41.3 79.9 43.1 82a3.8 3.8 0 005.8 0C50.7 125.9 92 77.8 92 46 92 20.6 71.4 0 46 0z" fill="#EA4335"/><path d="M46 0v92C20.6 92 0 71.4 0 46 0 20.6 20.6 0 46 0z" fill="#1E88E5"/><circle cx="46" cy="46" r="18" fill="#fff"/></svg> {{ t('nav.google') }}
               </a>
             </div>
-            <h2>高德地图 Web API 测试</h2>
+            <h2>{{ t('pages.amap.title') }}</h2>
           </div>
 
           <div class="sidebar-content">
             <el-tabs v-model="activeTab" class="func-tabs" type="border-card">
-              <el-tab-pane label="配置面板" name="config">
+              <el-tab-pane :label="t('config.tab')" name="config">
                 <el-card class="box-card" shadow="never">
                   <el-form label-width="90px" size="small">
-                    <el-form-item label="前端 AK">
-                      <el-select v-model="browserAk" placeholder="浏览器端使用" allow-create filterable clearable style="width: 100%">
+                    <el-form-item :label="t('pages.amap.browserAk')">
+                      <el-select v-model="browserAk" :placeholder="t('pages.amap.akPlaceholder')" allow-create filterable clearable style="width: 100%">
                         <el-option v-for="item in browserAkList" :key="item" :label="item" :value="item" />
                       </el-select>
                     </el-form-item>
-                    <el-form-item label="服务端 AK">
-                      <el-select v-model="serverAk" placeholder="服务端 API 使用" allow-create filterable clearable style="width: 100%">
+                    <el-form-item :label="t('pages.amap.serverAk')">
+                      <el-select v-model="serverAk" :placeholder="t('pages.amap.serverAkPlaceholder')" allow-create filterable clearable style="width: 100%">
                         <el-option v-for="item in serverAkList" :key="item" :label="item" :value="item" />
                       </el-select>
                     </el-form-item>
-                    <el-form-item label="默认区域">
-                      <el-select v-model="globalRegion" placeholder="例如：北京 / New York / Tokyo" allow-create filterable clearable style="width: 100%">
+                    <el-form-item :label="t('common.defaultCity')">
+                      <el-select v-model="globalRegion" :placeholder="t('common.placeholderCity')" allow-create filterable clearable style="width: 100%">
                         <el-option v-for="item in regionList" :key="item" :label="item" :value="item" />
                       </el-select>
                     </el-form-item>
-                    <el-form-item label="安全密钥">
-                      <el-input v-model="browserSecurityCode" placeholder="高德 Web JS 安全密钥" clearable />
+                    <el-form-item :label="t('pages.amap.securityCode')">
+                      <el-input v-model="browserSecurityCode" :placeholder="t('pages.amap.securityPlaceholder')" clearable />
                     </el-form-item>
                   </el-form>
-                  <el-button type="primary" :loading="mapLoading" @click="loadAmap" style="width: 100%; margin-top: 10px;">加载地图并保存配置</el-button>
+                  <el-button type="primary" :loading="mapLoading" @click="loadAmap" style="width: 100%; margin-top: 10px;">{{ t('config.loadButton') }}</el-button>
                 </el-card>
               </el-tab-pane>
 
-              <el-tab-pane label="地点搜索" name="search" :disabled="!mapReady">
+              <el-tab-pane :label="t('search.tab')" name="search">
                 <el-card class="box-card box-card-flex" shadow="never">
                   <el-form :model="searchForm" label-width="60px" @submit.prevent style="display: flex; flex-direction: column; height: 100%;">
-                    <el-form-item label="接口模式">
+                    <el-form-item :label="t('common.apiMode')">
                       <el-radio-group v-model="searchForm.apiMode">
-                        <el-radio label="jsapi">前端 (PlaceSearch)</el-radio>
-                        <el-radio label="server">服务端 (Place Text API)</el-radio>
+                        <el-radio label="jsapi">{{ t('search.modes.jsapi') }}</el-radio>
+                        <el-radio label="server">{{ t('search.modes.server') }} (Place Text API)</el-radio>
                       </el-radio-group>
                     </el-form-item>
                     <el-row :gutter="10">
                       <el-col :span="12">
-                        <el-form-item label="结果条数">
+                        <el-form-item :label="t('common.resultCount')">
                           <el-input-number v-model="searchForm.count" :min="1" :max="50" style="width: 100%" />
                         </el-form-item>
                       </el-col>
                       <el-col :span="12">
-                        <el-button type="primary" :loading="searchLoading" @click="doSearch" style="width: 100%;">关键词搜索</el-button>
+                        <el-button type="primary" :loading="searchLoading" @click="doSearch" style="width: 100%;">{{ t('common.keywordSearch') }}</el-button>
                       </el-col>
                     </el-row>
-                    <el-form-item label="关键词">
-                      <el-input v-model="searchForm.keyword" placeholder="例如：天安门 / Times Square" @keyup.enter="doSearch" />
+                    <el-form-item :label="t('common.keyword')">
+                      <el-input v-model="searchForm.keyword" :placeholder="t('search.placeholder')" @keyup.enter="doSearch" />
                     </el-form-item>
                     <el-row :gutter="10" style="margin-bottom: 10px;">
                       <el-col :span="24">
                         <div class="flex-wrap" style="justify-content: center">
-                          <el-button size="small" type="info" plain @click="quickSearch('行政区')">行政区</el-button>
-                          <el-button size="small" type="info" plain @click="quickSearch('机场')">机场</el-button>
-                          <el-button size="small" type="info" plain @click="quickSearch('火车站')">火车站</el-button>
-                          <el-button size="small" type="info" plain @click="quickSearch('商圈')">商圈</el-button>
-                          <el-button size="small" type="info" plain @click="quickSearch('地铁站')">地铁站</el-button>
+                          <el-button size="small" type="info" plain @click="quickSearch(t('search.quick.district'))">{{ t('search.quick.district') }}</el-button>
+                          <el-button size="small" type="info" plain @click="quickSearch(t('search.quick.airport'))">{{ t('search.quick.airport') }}</el-button>
+                          <el-button size="small" type="info" plain @click="quickSearch(t('search.quick.train'))">{{ t('search.quick.train') }}</el-button>
+                          <el-button size="small" type="info" plain @click="quickSearch(t('search.quick.mall'))">{{ t('search.quick.mall') }}</el-button>
+                          <el-button size="small" type="info" plain @click="quickSearch(t('search.quick.subway'))">{{ t('search.quick.subway') }}</el-button>
                           <el-button size="small" type="success" plain @click="quickSearch('airport')">Airport</el-button>
                           <el-button size="small" type="success" plain @click="quickSearch('hotel')">Hotel</el-button>
                           <el-button size="small" type="success" plain @click="quickSearch('train station')">Train Station</el-button>
@@ -95,16 +95,16 @@
                     </el-row>
                     <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column;" v-if="searchResults.length > 0 || serverSearchRawData">
                       <el-tabs v-if="searchForm.apiMode === 'server' && serverSearchRawData" v-model="searchResultTab" type="border-card" class="result-tabs">
-                        <el-tab-pane label="列表展示" name="list">
+                        <el-tab-pane :label="t('common.listTab')" name="list">
                           <el-table :data="searchResults" height="100%" style="width: 100%" @row-click="viewOnMap">
-                            <el-table-column prop="title" label="名称" width="130" show-overflow-tooltip></el-table-column>
-                            <el-table-column prop="address" label="地点/坐标" show-overflow-tooltip></el-table-column>
+                            <el-table-column prop="title" :label="t('common.name')" width="130" show-overflow-tooltip></el-table-column>
+                            <el-table-column prop="address" :label="t('common.address')" show-overflow-tooltip></el-table-column>
                           </el-table>
                         </el-tab-pane>
-                        <el-tab-pane label="JSON 数据" name="json">
+                        <el-tab-pane :label="t('common.jsonTab')" name="json">
                           <div class="json-panel">
                             <div class="json-toolbar">
-                              <el-button size="small" type="primary" plain @click="copyJson(serverSearchRawData)">复制 JSON</el-button>
+                              <el-button size="small" type="primary" plain @click="copyJson(serverSearchRawData)">{{ t('common.copyJsonButton') }}</el-button>
                             </div>
                             <el-scrollbar class="json-scrollbar">
                               <pre class="json-code" v-html="searchJsonHtml"></pre>
@@ -115,8 +115,8 @@
 
                       <template v-else-if="searchResults.length > 0">
                         <el-table :data="searchResults" height="100%" style="width: 100%" @row-click="viewOnMap">
-                          <el-table-column prop="title" label="名称" width="130" show-overflow-tooltip></el-table-column>
-                          <el-table-column prop="address" label="地点/坐标" show-overflow-tooltip></el-table-column>
+                          <el-table-column prop="title" :label="t('common.name')" width="130" show-overflow-tooltip></el-table-column>
+                          <el-table-column prop="address" :label="t('common.address')" show-overflow-tooltip></el-table-column>
                         </el-table>
                       </template>
                     </div>
@@ -124,53 +124,53 @@
                 </el-card>
               </el-tab-pane>
 
-              <el-tab-pane label="路线规划" name="route" :disabled="!mapReady">
+              <el-tab-pane :label="t('route.tab')" name="route">
                 <el-card class="box-card box-card-flex" shadow="never">
                   <el-form :model="routeForm" label-width="70px" @submit.prevent style="display: flex; flex-direction: column; height: 100%;">
-                    <el-form-item label="接口模式">
+                    <el-form-item :label="t('common.apiMode')">
                       <el-radio-group v-model="routeForm.apiMode">
-                        <el-radio label="jsapi">前端 (JS API Route)</el-radio>
-                        <el-radio label="server">服务端 (Direction API)</el-radio>
+                        <el-radio label="jsapi">{{ t('route.modes.jsapi') }}</el-radio>
+                        <el-radio label="server">{{ t('route.modes.server') }}</el-radio>
                       </el-radio-group>
                     </el-form-item>
-                    <el-form-item label="起点">
+                    <el-form-item :label="t('route.start')">
                       <el-row :gutter="5" style="width: 100%">
-                        <el-col :span="14"><el-input v-model="routeForm.start" placeholder="搜索地址或坐标" /></el-col>
-                        <el-col :span="10"><el-input v-model="routeForm.startCoords" placeholder="自动解析" disabled /></el-col>
+                        <el-col :span="14"><el-input v-model="routeForm.start" :placeholder="t('route.placeholder')" /></el-col>
+                        <el-col :span="10"><el-input v-model="routeForm.startCoords" :placeholder="t('route.autoResolve')" disabled /></el-col>
                       </el-row>
                     </el-form-item>
-                    <el-form-item label="终点">
+                    <el-form-item :label="t('route.end')">
                       <el-row :gutter="5" style="width: 100%">
-                        <el-col :span="14"><el-input v-model="routeForm.end" placeholder="搜索地址或坐标" /></el-col>
-                        <el-col :span="10"><el-input v-model="routeForm.endCoords" placeholder="自动解析" disabled /></el-col>
+                        <el-col :span="14"><el-input v-model="routeForm.end" :placeholder="t('route.placeholder')" /></el-col>
+                        <el-col :span="10"><el-input v-model="routeForm.endCoords" :placeholder="t('route.autoResolve')" disabled /></el-col>
                       </el-row>
                     </el-form-item>
-                    <el-form-item label="出行方式">
+                    <el-form-item :label="t('route.travelMode')">
                       <el-radio-group v-model="routeForm.travelMode">
-                        <el-radio label="driving">驾车</el-radio>
-                        <el-radio label="transit">公交</el-radio>
-                        <el-radio label="walking">步行</el-radio>
-                        <el-radio label="riding">骑行</el-radio>
+                        <el-radio label="driving">{{ t('route.modes.driving') }}</el-radio>
+                        <el-radio label="transit">{{ t('route.modes.transit') }}</el-radio>
+                        <el-radio label="walking">{{ t('route.modes.walking') }}</el-radio>
+                        <el-radio label="riding">{{ t('route.modes.riding') }}</el-radio>
                       </el-radio-group>
                     </el-form-item>
 
-                    <el-button type="primary" style="width: 100%; margin-bottom: 15px;" :loading="routeLoading" @click="calcRoute">开始规划</el-button>
+                    <el-button type="primary" style="width: 100%; margin-bottom: 15px;" :loading="routeLoading" @click="calcRoute">{{ t('route.startPlanning') }}</el-button>
 
                     <div v-if="routeDetailInfo && routeDetailInfo.length > 0" style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
                       <el-tabs v-if="routeForm.apiMode === 'server' && routeResults" v-model="routeResultTab" type="border-card" class="result-tabs">
-                        <el-tab-pane label="路线详情" name="list">
+                        <el-tab-pane :label="t('route.detailTab')" name="list">
                           <el-scrollbar class="route-detail-scrollbar">
                             <div v-for="route in routeDetailInfo" :key="route.index" class="route-summary-card">
                               <div class="route-summary-header">
-                                <el-tag type="primary" effect="dark" size="small">方案 {{ route.index }}</el-tag>
+                                <el-tag type="primary" effect="dark" size="small">{{ t('route.summary.plan') }} {{ route.index }}</el-tag>
                               </div>
                               <div class="route-summary-metrics">
                                 <div class="metric-item">
-                                  <span class="metric-label">总距离</span>
+                                  <span class="metric-label">{{ t('route.summary.distance') }}</span>
                                   <span class="metric-value">{{ route.distance }}</span>
                                 </div>
                                 <div class="metric-item">
-                                  <span class="metric-label">预计耗时</span>
+                                  <span class="metric-label">{{ t('route.summary.duration') }}</span>
                                   <span class="metric-value">{{ route.duration }}</span>
                                 </div>
                               </div>
@@ -190,10 +190,10 @@
                             </div>
                           </el-scrollbar>
                         </el-tab-pane>
-                        <el-tab-pane label="JSON 数据" name="json">
+                        <el-tab-pane :label="t('common.jsonTab')" name="json">
                           <div class="json-panel">
                             <div class="json-toolbar">
-                              <el-button size="small" type="primary" plain @click="copyJson(routeResults)">复制 JSON</el-button>
+                              <el-button size="small" type="primary" plain @click="copyJson(routeResults)">{{ t('common.copyJsonButton') }}</el-button>
                             </div>
                             <el-scrollbar class="json-scrollbar">
                               <pre class="json-code" v-html="routeJsonHtml"></pre>
@@ -207,17 +207,20 @@
                           <div v-for="route in routeDetailInfo" :key="route.index" class="route-summary-card">
                             <div class="route-summary-metrics">
                               <div class="metric-item">
-                                <span class="metric-label">总距离</span>
+                                <span class="metric-label">{{ t('route.summary.distance') }}</span>
                                 <span class="metric-value">{{ route.distance }}</span>
                               </div>
                               <div class="metric-item">
-                                <span class="metric-label">预计耗时</span>
+                                <span class="metric-label">{{ t('route.summary.duration') }}</span>
                                 <span class="metric-value">{{ route.duration }}</span>
                               </div>
                             </div>
                             <el-timeline v-if="route.steps && route.steps.length > 0" class="route-timeline">
-                              <el-timeline-item v-for="step in route.steps" :key="step.index" size="small" type="primary">
+                              <el-timeline-item v-for="step in route.steps" :key="step.index" size="small" :type="step.vehicleName ? 'success' : 'primary'">
                                 <div class="step-content">
+                                  <div v-if="step.vehicleName" style="margin-bottom: 2px;">
+                                    <el-tag size="small" type="success" effect="plain">{{ step.vehicleName }}</el-tag>
+                                  </div>
                                   <span class="step-text">{{ step.instruction }}</span>
                                   <span class="step-info" v-if="step.distance || step.duration">
                                     {{ step.distance }}<template v-if="step.distance && step.duration"> / </template>{{ step.duration }}
@@ -233,47 +236,47 @@
                 </el-card>
               </el-tab-pane>
 
-              <el-tab-pane label="附近搜索" name="locate" :disabled="!mapReady">
+              <el-tab-pane :label="t('locate.tab')" name="locate">
                 <el-card class="box-card box-card-flex" shadow="never">
                   <el-form :model="locateForm" label-width="80px" @submit.prevent style="display: flex; flex-direction: column; height: 100%;">
-                    <el-form-item label="接口模式">
+                    <el-form-item :label="t('common.apiMode')">
                       <el-radio-group v-model="locateForm.apiMode">
-                        <el-radio label="jsapi">前端 (PlaceSearch)</el-radio>
-                        <el-radio label="server">服务端 (Place Around API)</el-radio>
+                        <el-radio label="jsapi">{{ t('search.modes.jsapi') }}</el-radio>
+                        <el-radio label="server">{{ t('search.modes.server') }} (Place Around API)</el-radio>
                       </el-radio-group>
                     </el-form-item>
-                    <el-form-item label="中心点">
-                      <el-input v-model="locateForm.input" placeholder="输入地址或 经度,纬度" clearable />
+                    <el-form-item :label="t('locate.center')">
+                      <el-input v-model="locateForm.input" :placeholder="t('locate.centerPlaceholder')" clearable />
                     </el-form-item>
-                    <el-form-item label="周边关键字">
-                      <el-input v-model="locateForm.nearbyKeyword" placeholder="可选：hotel / subway / coffee" clearable />
+                    <el-form-item :label="t('locate.nearbyKeyword')">
+                      <el-input v-model="locateForm.nearbyKeyword" :placeholder="t('locate.nearbyPlaceholder')" clearable />
                     </el-form-item>
-                    <el-form-item label="搜索半径">
+                    <el-form-item :label="t('locate.radius')">
                       <el-input-number v-model="locateForm.radius" :min="100" :max="50000" :step="100" style="width: 100%" />
                     </el-form-item>
-                    <el-button type="primary" :loading="locateLoading" @click="locateInput" style="width: 100%; margin-bottom: 12px;">解析中心并搜索附近</el-button>
+                    <el-button type="primary" :loading="locateLoading" @click="locateInput" style="width: 100%; margin-bottom: 12px;">{{ t('locate.resolveButton') }}</el-button>
                     <div class="location-resolve-card">
-                      <p>解析出的中心点经纬度</p>
+                      <p>{{ t('locate.centerCoords') }}</p>
                       <el-tag size="large" type="success" effect="plain" v-if="locateForm.resolvedCoords">
                          {{ locateForm.resolvedCoords }}
                       </el-tag>
                       <el-tag size="large" type="info" effect="plain" v-else>
-                         暂无定位数据
+                         {{ t('locate.noCoords') }}
                       </el-tag>
                     </div>
 
                     <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; margin-top: 16px;" v-if="nearbyResults.length > 0 || nearbyRawData">
                       <el-tabs v-if="locateForm.apiMode === 'server' && nearbyRawData" v-model="locateResultTab" type="border-card" class="result-tabs">
-                        <el-tab-pane label="列表展示" name="list">
+                        <el-tab-pane :label="t('common.listTab')" name="list">
                           <el-table :data="nearbyResults" height="100%" style="width: 100%" @row-click="viewOnMap">
-                            <el-table-column prop="title" label="名称" width="130" show-overflow-tooltip></el-table-column>
-                            <el-table-column prop="address" label="地点/坐标" show-overflow-tooltip></el-table-column>
+                            <el-table-column prop="title" :label="t('common.name')" width="130" show-overflow-tooltip></el-table-column>
+                            <el-table-column prop="address" :label="t('common.address')" show-overflow-tooltip></el-table-column>
                           </el-table>
                         </el-tab-pane>
-                        <el-tab-pane label="JSON 数据" name="json">
+                        <el-tab-pane :label="t('common.jsonTab')" name="json">
                           <div class="json-panel">
                             <div class="json-toolbar">
-                              <el-button size="small" type="primary" plain @click="copyJson(nearbyRawData)">复制 JSON</el-button>
+                              <el-button size="small" type="primary" plain @click="copyJson(nearbyRawData)">{{ t('common.copyJsonButton') }}</el-button>
                             </div>
                             <el-scrollbar class="json-scrollbar">
                               <pre class="json-code" v-html="nearbyJsonHtml"></pre>
@@ -284,8 +287,8 @@
 
                       <template v-else-if="nearbyResults.length > 0">
                         <el-table :data="nearbyResults" height="100%" style="width: 100%" @row-click="viewOnMap">
-                          <el-table-column prop="title" label="名称" width="130" show-overflow-tooltip></el-table-column>
-                          <el-table-column prop="address" label="地点/坐标" show-overflow-tooltip></el-table-column>
+                          <el-table-column prop="title" :label="t('common.name')" width="130" show-overflow-tooltip></el-table-column>
+                          <el-table-column prop="address" :label="t('common.address')" show-overflow-tooltip></el-table-column>
                         </el-table>
                       </template>
                     </div>
@@ -300,7 +303,7 @@
       <el-main class="main-content">
         <div id="map-container" class="map-container"></div>
         <div class="map-overlay" v-if="!mapReady">
-          <h2>请先配置高德地图 AK 并加载地图</h2>
+          <h2>{{ t('pages.amap.overlay') }}</h2>
         </div>
       </el-main>
     </el-container>

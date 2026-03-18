@@ -3,7 +3,29 @@
     "langLabel": "语言",
     "copyJsonButton": "复制 JSON",
     "copyJsonSuccess": "已复制到剪贴板",
-    "copyJsonError": "复制失败，请手动复制"
+    "copyJsonError": "复制失败，请手动复制",
+    "apiMode": "接口模式",
+    "keyword": "关键词",
+    "search": "搜索",
+    "keywordSearch": "关键词搜索",
+    "resultCount": "结果条数",
+    "listTab": "列表展示",
+    "jsonTab": "JSON 数据",
+    "name": "名称",
+    "address": "地点/坐标",
+    "loading": "加载中...",
+    "success": "成功",
+    "warning": "警告",
+    "error": "错误",
+    "info": "信息",
+    "defaultCity": "默认城市",
+    "placeholderCity": "例如：北京 / New York",
+    "proxyUrl": "代理地址",
+    "proxyPlaceholder": "服务端代理 Base URL",
+    "none": "暂无",
+    "points": "点",
+    "international": "国际",
+    "domestic": "国内"
   },
   "home": {
     "title": "地图 Web API 测试平台",
@@ -37,15 +59,93 @@
   "pages": {
     "baidu": {
       "title": "百度地图 Web API 测试",
-      "overlay": "请先配置百度地图 AK 并加载地图"
+      "overlay": "请先配置百度地图 AK 并加载地图",
+      "browserAk": "前端 AK",
+      "serverAk": "服务端 AK",
+      "akPlaceholder": "浏览器端使用",
+      "serverAkPlaceholder": "服务端 API 使用",
+      "scope": "接口范围"
     },
     "google": {
       "title": "Google Maps API 测试",
-      "overlay": "请先配置 Google Maps API Key 并加载地图"
+      "overlay": "请先配置 Google Maps API Key 并加载地图",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "输入 Google Maps API Key"
     },
     "amap": {
       "title": "高德地图 Web API 测试",
-      "overlay": "请先配置高德地图 AK 并加载地图"
+      "overlay": "请先配置高德地图 AK 并加载地图",
+      "browserAk": "前端 AK",
+      "serverAk": "服务端 AK",
+      "akPlaceholder": "浏览器端使用",
+      "serverAkPlaceholder": "服务端 API 使用",
+      "securityCode": "安全密钥",
+      "securityPlaceholder": "高德 Web JS 安全密钥"
     }
+  },
+  "config": {
+    "tab": "配置面板",
+    "loadButton": "加载地图并保存配置",
+    "helpText": "提示：服务端模式通过代理访问 Google Web API。"
+  },
+  "search": {
+    "tab": "地点搜索",
+    "placeholder": "例如：天安门 / Times Square",
+    "modes": {
+      "frontend": "前端",
+      "server": "服务端",
+      "google": "Google 服务端结果",
+      "webgl": "前端 (LocalSearch)",
+      "jsapi": "前端 (PlaceSearch)"
+    },
+    "quick": {
+      "district": "行政区",
+      "airport": "机场",
+      "train": "火车站",
+      "mall": "商圈",
+      "subway": "地铁站",
+      "hospital": "医院",
+      "hotel": "酒店",
+      "coffee": "咖啡馆"
+    }
+  },
+  "route": {
+    "tab": "路线规划",
+    "start": "起点",
+    "end": "终点",
+    "placeholder": "搜索地址或坐标",
+    "autoResolve": "自动解析",
+    "travelMode": "出行方式",
+    "startPlanning": "开始规划",
+    "detailTab": "路线详情",
+    "modes": {
+      "driving": "驾车",
+      "transit": "公交",
+      "walking": "步行",
+      "riding": "骑行",
+      "bicycling": "骑行",
+      "frontend": "前端",
+      "server": "服务端",
+      "google": "Google 服务端结果",
+      "webgl": "前端 (WebGL Route)",
+      "jsapi": "前端 (JS API Route)"
+    },
+    "summary": {
+      "plan": "方案",
+      "distance": "总距离",
+      "duration": "预计耗时"
+    }
+  },
+  "locate": {
+    "tab": "附近搜索",
+    "center": "中心点",
+    "centerPlaceholder": "输入地址或 经度,纬度",
+    "nearbyKeyword": "周边关键字",
+    "nearbyPlaceholder": "可选：hotel / coffee / subway",
+    "radius": "搜索半径",
+    "count": "结果数量",
+    "resolveButton": "解析中心并搜索附近",
+    "centerCoords": "解析出的中心点经纬度",
+    "noCoords": "暂无定位数据"
   }
 }

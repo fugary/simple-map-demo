@@ -1,3 +1,4 @@
+/* global AMap */
 /**
  * Amap Route Drawer
  * 用于将服务端（纯数据API）返回的高德路线数据在 AMap 地图上绘制出来

@@ -11,6 +11,14 @@ if (typeof window !== 'undefined') {
 
 const app = createApp({
   setup() {
+    const currentLang = ref(window.AppI18n ? window.AppI18n.getLang() : 'zh');
+    const t = (key, fallback, params) => window.AppI18n ? window.AppI18n.t(key, fallback, params) : (fallback || key);
+
+    window.addEventListener('app-language-change', (e) => {
+      currentLang.value = e.detail.lang;
+      if (apiKey.value && (window.google || mapReady.value)) loadGoogleMap();
+    });
+
     const mapLanguage = () => {
       const lang = window.AppI18n && window.AppI18n.getLang();
       const result = lang === 'en' ? 'en' : 'zh-CN';
@@ -168,6 +176,22 @@ const app = createApp({
       return marker;
     };
 
+    const unloadGoogleSdk = () => {
+      const existingRefs = document.querySelectorAll('script[src*="maps.googleapis.com"]');
+      existingRefs.forEach(node => node.remove());
+      delete window.google;
+      delete window.initGoogleMapCallback;
+      mapReady.value = false;
+      mapInstance = null;
+      clearSearchMarkers();
+      clearNearbyMarkers();
+      clearRouteMarkers();
+      clearRenderedRoute();
+      if (document.getElementById('map-container')) {
+        document.getElementById('map-container').innerHTML = '';
+      }
+    };
+
     const loadGoogleMap = () => {
       if (!apiKey.value) {
         ElMessage.warning('请输入 Google Maps API Key');
@@ -178,18 +202,25 @@ const app = createApp({
       MapUtils.saveConfigVal(regionList, globalRegion.value, 'google_map_regions');
       localStorage.setItem('google_map_proxy_base', proxyBaseUrl.value);
 
+      const desiredLang = mapLanguage();
+      if (window.google && window.__simpleMapGoogleLang !== desiredLang) {
+        unloadGoogleSdk();
+      }
+
       if (window.google && window.google.maps) {
+        window.__simpleMapGoogleLang = desiredLang;
         initMap();
         return;
       }
 
       window.initGoogleMapCallback = () => {
+        window.__simpleMapGoogleLang = desiredLang;
         initMap();
       };
 
       const script = document.createElement('script');
       script.type = 'text/javascript';
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey.value}&libraries=places,geometry&language=${mapLanguage()}&region=${mapRegion()}&callback=initGoogleMapCallback`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey.value}&libraries=places,geometry&language=${desiredLang}&region=${mapRegion()}&callback=initGoogleMapCallback`;
       script.onerror = () => {
         ElMessage.error('Google Maps 加载失败，请检查 API Key 或网络');
       };
@@ -774,7 +805,8 @@ const app = createApp({
       copyJson: MapUtils.copyJson,
       searchJsonHtml,
       routeJsonHtml,
-      nearbyJsonHtml
+      nearbyJsonHtml,
+      t
     };
   }
 });

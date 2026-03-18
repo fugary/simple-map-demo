@@ -12,6 +12,14 @@ if (typeof window !== 'undefined') {
 
 const app = createApp({
   setup() {
+    const currentLang = ref(window.AppI18n ? window.AppI18n.getLang() : 'zh');
+    const t = (key, fallback, params) => window.AppI18n ? window.AppI18n.t(key, fallback, params) : (fallback || key);
+
+    window.addEventListener('app-language-change', (e) => {
+      currentLang.value = e.detail.lang;
+      if (browserAk.value && (window.AMap || mapReady.value)) loadAmap();
+    });
+
     const mapLanguage = () => {
       const lang = window.AppI18n && window.AppI18n.getLang();
       const result = lang === 'en' ? 'en' : 'zh_cn';
@@ -709,7 +717,8 @@ const app = createApp({
       copyJson: MapUtils.copyJson,
       searchJsonHtml,
       routeJsonHtml,
-      nearbyJsonHtml
+      nearbyJsonHtml,
+      t
     };
   }
 });

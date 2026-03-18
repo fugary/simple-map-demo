@@ -3,7 +3,29 @@
     "langLabel": "Lang",
     "copyJsonButton": "Copy JSON",
     "copyJsonSuccess": "Copied to clipboard",
-    "copyJsonError": "Copy failed, please copy manually"
+    "copyJsonError": "Copy failed, please copy manually",
+    "apiMode": "API Mode",
+    "keyword": "Keyword",
+    "search": "Search",
+    "keywordSearch": "Search By Keyword",
+    "resultCount": "Result Count",
+    "listTab": "List View",
+    "jsonTab": "JSON Data",
+    "name": "Name",
+    "address": "Place/Coords",
+    "loading": "Loading...",
+    "success": "Success",
+    "warning": "Warning",
+    "error": "Error",
+    "info": "Info",
+    "defaultCity": "Default City",
+    "placeholderCity": "e.g. Beijing / New York",
+    "proxyUrl": "Proxy URL",
+    "proxyPlaceholder": "Server Proxy Base URL",
+    "none": "None",
+    "points": "Pts",
+    "international": "INTL",
+    "domestic": "Local"
   },
   "home": {
     "title": "Map Web API Playground",
@@ -27,25 +49,103 @@
   "nav": {
     "home": "Home",
     "homeTitle": "Back to Home",
-    "baidu": "Baidu Maps",
+    "baidu": "Baidu",
     "baiduTitle": "Switch to Baidu Maps",
-    "google": "Google Maps",
+    "google": "Google",
     "googleTitle": "Switch to Google Maps",
     "amap": "Amap",
     "amapTitle": "Switch to Amap"
   },
   "pages": {
     "baidu": {
-      "title": "Baidu Maps Web API Playground",
-      "overlay": "Configure Baidu Map AK and load the map first"
+      "title": "Baidu Maps Web API Testing",
+      "overlay": "Configure Baidu Map AK and load the map first",
+      "browserAk": "Frontend AK",
+      "serverAk": "Server AK",
+      "akPlaceholder": "For Browser use",
+      "serverAkPlaceholder": "For Server API use",
+      "scope": "Scope"
     },
     "google": {
-      "title": "Google Maps API Playground",
-      "overlay": "Configure Google Maps API Key and load the map first"
+      "title": "Google Maps API Testing",
+      "overlay": "Configure Google Maps API Key and load the map first",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "Enter Google Maps API Key"
     },
     "amap": {
-      "title": "Amap Web API Playground",
-      "overlay": "Configure Amap AK and load the map first"
+      "title": "Amap Web API Testing",
+      "overlay": "Configure Amap AK and load the map first",
+      "browserAk": "Frontend AK",
+      "serverAk": "Server AK",
+      "akPlaceholder": "For Browser use",
+      "serverAkPlaceholder": "For Server API use",
+      "securityCode": "Security Key",
+      "securityPlaceholder": "Amap Web JS Security Code"
     }
+  },
+  "config": {
+    "tab": "Config",
+    "loadButton": "Load Map & Save Config",
+    "helpText": "Tip: Server mode accesses Google Web API via proxy."
+  },
+  "search": {
+    "tab": "Search",
+    "placeholder": "e.g. Times Square",
+    "modes": {
+      "frontend": "Frontend",
+      "server": "Server",
+      "google": "Google Server Results",
+      "webgl": "Frontend (LocalSearch)",
+      "jsapi": "Frontend (PlaceSearch)"
+    },
+    "quick": {
+      "district": "Dist.",
+      "airport": "Airport",
+      "train": "Train",
+      "mall": "Mall",
+      "subway": "Subway",
+      "hospital": "Hosp.",
+      "hotel": "Hotel",
+      "coffee": "Coffee"
+    }
+  },
+  "route": {
+    "tab": "Route",
+    "start": "Start",
+    "end": "End",
+    "placeholder": "Search address or coords",
+    "autoResolve": "Auto Resolve",
+    "travelMode": "Travel Mode",
+    "startPlanning": "Start Planning",
+    "detailTab": "Route Detail",
+    "modes": {
+      "driving": "Driving",
+      "transit": "Transit",
+      "walking": "Walking",
+      "riding": "Riding",
+      "bicycling": "Bicycling",
+      "frontend": "Frontend",
+      "server": "Server",
+      "google": "Google Server Results",
+      "webgl": "Frontend (WebGL Route)",
+      "jsapi": "Frontend (JS API Route)"
+    },
+    "summary": {
+      "plan": "Plan",
+      "distance": "Distance",
+      "duration": "Duration"
+    }
+  },
+  "locate": {
+    "tab": "Nearby",
+    "center": "Center",
+    "centerPlaceholder": "Address or Lng,Lat",
+    "nearbyKeyword": "Keyword",
+    "nearbyPlaceholder": "Optional: hotel / coffee",
+    "radius": "Radius",
+    "count": "Count",
+    "resolveButton": "Resolve & Search Nearby",
+    "centerCoords": "Resolved Coordinates",
+    "noCoords": "No Location Data"
   }
 }

@@ -37,8 +37,9 @@ const setLang = (lang, options = {}) => {
   const next = normalizeLang(lang);
   const prev = getLang();
   localStorage.setItem(STORAGE_KEY, next);
-  window.dispatchEvent(new CustomEvent('app-language-change', { detail: { lang: next } }));
-  if (options.reload !== false && next !== prev) {
+  applyLanguage(); // Apply static DOM localizations immediately
+  window.dispatchEvent(new CustomEvent('app-language-change', { detail: { lang: next, reload: options.reload } }));
+  if (options.reload === true && next !== prev) {
     window.location.reload();
   }
 };
@@ -169,7 +170,7 @@ const injectLangSwitch = () => {
     wrapper.className = 'app-lang-switch';
     wrapper.innerHTML = `
       <label for="app-lang-select">${t('common.langLabel')}</label>
-      <select id="app-lang-select" onchange="window.AppI18n && window.AppI18n.setLang(this.value, { reload: true })">
+      <select id="app-lang-select" onchange="window.AppI18n && window.AppI18n.setLang(this.value)">
         <option value="zh">ZH</option>
         <option value="en">EN</option>
       </select>
@@ -182,7 +183,7 @@ const injectLangSwitch = () => {
     wrapper.className = 'app-lang-switch app-lang-switch-floating';
     wrapper.innerHTML = `
       <label for="app-lang-select">${t('common.langLabel')}</label>
-      <select id="app-lang-select" onchange="window.AppI18n && window.AppI18n.setLang(this.value, { reload: true })">
+      <select id="app-lang-select" onchange="window.AppI18n && window.AppI18n.setLang(this.value)">
         <option value="zh">ZH</option>
         <option value="en">EN</option>
       </select>
@@ -201,7 +202,7 @@ const injectLangSwitch = () => {
     document.addEventListener('change', (event) => {
       if (event.target && event.target.id === 'app-lang-select') {
         console.log('[i18n] Language switch triggered:', event.target.value);
-        setLang(event.target.value, { reload: true });
+        setLang(event.target.value);
       }
     });
   }
