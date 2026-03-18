@@ -233,7 +233,8 @@ const app = createApp({
     const geocodeByServer = async (address) => {
       const res = await fetch(proxyUrl('geocode/json', {
         address,
-        key: apiKey.value
+        key: apiKey.value,
+        language: mapLanguage()
       })).then((response) => response.json());
       if (res && res.status === 'OK' && Array.isArray(res.results) && res.results[0]) {
         return normalizeLocation(res.results[0].geometry.location);
@@ -320,7 +321,8 @@ const app = createApp({
         try {
           const params = {
             query: searchForm.keyword,
-            key: apiKey.value
+            key: apiKey.value,
+            language: mapLanguage()
           };
           if (globalRegion.value) {
             params.region = globalRegion.value;
@@ -484,7 +486,8 @@ const app = createApp({
         location: `${centerPoint.lat},${centerPoint.lng}`,
         radius: String(locateForm.radius || 2000),
         keyword: locateForm.nearbyKeyword,
-        key: apiKey.value
+        key: apiKey.value,
+        language: mapLanguage()
       })).then((response) => response.json());
 
       return {
@@ -642,7 +645,8 @@ const app = createApp({
         destination: `${destPoint.lat},${destPoint.lng}`,
         mode: modeMap[routeForm.travelMode] || 'driving',
         alternatives: 'true',
-        key: apiKey.value
+        key: apiKey.value,
+        language: mapLanguage()
       })).then((response) => response.json());
 
       routeResults.value = res;
