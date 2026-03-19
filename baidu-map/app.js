@@ -485,9 +485,14 @@ const app = createApp({
             return;
           }
 
+          const targetRegion = globalRegion.value === '全国' ? '' : globalRegion.value;
+          let finalQuery = searchForm.keyword;
+          if (targetRegion && !finalQuery.includes(targetRegion)) {
+            finalQuery = `${finalQuery} ${targetRegion}`;
+          }
+
           const result = await googleTextSearch({
-            query: searchForm.keyword,
-            region: globalRegion.value === '全国' ? '' : globalRegion.value,
+            query: finalQuery,
             count: searchForm.count,
             config
           });

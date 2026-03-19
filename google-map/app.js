@@ -372,8 +372,8 @@ const app = createApp({
             key: apiKey.value,
             language: mapLanguage()
           };
-          if (globalRegion.value) {
-            params.region = globalRegion.value;
+          if (globalRegion.value && globalRegion.value !== '全国' && !params.query.includes(globalRegion.value)) {
+            params.query = `${params.query} ${globalRegion.value}`;
           }
           const res = await fetch(proxyUrl('place/textsearch/json', params)).then((response) => response.json());
           serverSearchRawData.value = res;
