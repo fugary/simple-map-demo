@@ -278,7 +278,7 @@ const app = createApp({
         onSearchComplete: (results) => {
           if (local.getStatus() === window.BMAP_STATUS_SUCCESS && results.getCurrentNumPois() > 0) {
             const poi = results.getPoi(0);
-            if (poi.point) {
+            if (poi && poi.point) {
               mapScope.value = isInChina(poi.point.lng, poi.point.lat) ? 'domestic' : 'international';
             }
           }
@@ -347,7 +347,7 @@ const app = createApp({
         onSearchComplete: (results) => {
           if (local.getStatus() === window.BMAP_STATUS_SUCCESS && results.getCurrentNumPois() > 0) {
             const poi = results.getPoi(0);
-            resolve(poi.point ? { lng: poi.point.lng, lat: poi.point.lat } : null);
+            resolve(poi && poi.point ? { lng: poi.point.lng, lat: poi.point.lat } : null);
           } else {
             resolve(null);
           }
@@ -431,14 +431,25 @@ const app = createApp({
         let center = new window.BMapGL.Point(116.404, 39.915);
         let zoom = 12;
 
+        // Initialize map with a temporary center so LocalSearch has a valid map state to operate on
+        mapInstance.centerAndZoom(center, 5);
+
         const region = String(globalRegion.value || '').trim();
         if (region && region !== '全国') {
-          const point = await localSearchGeo(region);
+          let point = await localSearchGeo(region);
+          if (!point) point = await getCoords(region);
+          
+          if (!point) {
+            // Fallback to Google if Baidu fails (for overseas locations)
+            try {
+              point = await resolveGoogleCoords(region);
+            } catch (err) {
+              console.warn('Fallback to Google geocode failed for region:', err);
+            }
+          }
+
           if (point) {
             center = new window.BMapGL.Point(point.lng, point.lat);
-          } else {
-            const fallbackPoint = await getCoords(region);
-            if (fallbackPoint) center = new window.BMapGL.Point(fallbackPoint.lng, fallbackPoint.lat);
           }
         } else {
           zoom = 5;
@@ -516,6 +527,7 @@ const app = createApp({
               searchResults.value = [];
               for (let i = 0; i < results.getCurrentNumPois(); i += 1) {
                 const poi = results.getPoi(i);
+                if (!poi) continue;
                 searchResults.value.push({
                   title: poi.title || 'Unnamed',
                   address: `${poi.address || 'Unknown'} [${poi.point ? `${poi.point.lng.toFixed(6)},${poi.point.lat.toFixed(6)}` : ''}]`,
@@ -571,6 +583,7 @@ const app = createApp({
           if (local.getStatus() === window.BMAP_STATUS_SUCCESS) {
             for (let i = 0; i < results.getCurrentNumPois(); i += 1) {
               const poi = results.getPoi(i);
+              if (!poi) continue;
               items.push({
                 title: poi.title || 'Unnamed',
                 address: `${poi.address || 'Unknown'} [${poi.point ? `${poi.point.lng.toFixed(6)},${poi.point.lat.toFixed(6)}` : ''}]`,
