@@ -110,8 +110,15 @@
 <body>
   <div id="app" v-cloak>
     <div class="portal-container">
-      <h1 class="portal-title">🗺️ 地图 Web API 测试平台</h1>
-      <p class="portal-subtitle">统一测试各地图服务商 Web API，支持国内与国际场景</p>
+      <div class="app-lang-switch app-lang-switch-floating">
+        <label for="app-lang-select">{{ t('common.langLabel') }}</label>
+        <select id="app-lang-select" v-model="currentLang" @change="changeLang">
+          <option value="zh">ZH</option>
+          <option value="en">EN</option>
+        </select>
+      </div>
+      <h1 class="portal-title">🗺️ {{ t('home.title') }}</h1>
+      <p class="portal-subtitle">{{ t('home.subtitle') }}</p>
 
       <div class="card-grid">
 
@@ -126,7 +133,7 @@
               <path d="M50 38 C28 38 18 54 20 70 C22 84 32 92 50 92 C68 92 78 84 80 70 C82 54 72 38 50 38 Z" fill="#2932E1"/>
             </svg>
           </div>
-          <div class="card-name">百度地图</div>
+          <div class="card-name">{{ t('home.providers.baidu.name') }}</div>
           <div class="card-desc">Baidu Maps API<br/>支持 WebGL 前端渲染和服务端 API</div>
         </a>
 
@@ -161,13 +168,13 @@
               <path d="M38 38 L62 38" stroke="#FF6B35" stroke-width="4" fill="none"/>
             </svg>
           </div>
-          <div class="card-name">高德地图</div>
+          <div class="card-name">{{ t('home.providers.amap.name') }}</div>
           <div class="card-desc">Amap Web JS API<br/>支持前端渲染和服务端 API</div>
         </a>
 
       </div>
 
-      <div class="portal-footer">CITSGBT Map API Test Platform</div>
+      <div class="portal-footer">{{ t('home.footer') }}</div>
     </div>
   </div>
   <script type="module" src="./shared/home.js"></script>

@@ -1,5 +1,5 @@
 /* global AMap */
-import { createApp, ref, onMounted, reactive, markRaw, computed } from 'vue';
+import { createApp, ref, onMounted, reactive, markRaw, computed, watch } from 'vue';
 import ElementPlus, { ElMessage } from 'element-plus';
 import 'element-plus/dist/index.css';
 import { MapUtils } from '../shared/utils.js';
@@ -19,14 +19,19 @@ const app = createApp({
       return window.AppI18n ? window.AppI18n.t(key, fallback, params) : (fallback || key);
     };
 
-    window.addEventListener('app-language-change', (e) => {
-      currentLang.value = e.detail.lang;
-      if (browserAk.value && (window.AMap || mapReady.value)) loadAmap();
+    watch(currentLang, (newLang) => {
+      if (window.AppI18n && window.AppI18n.getLang() !== newLang) {
+        window.AppI18n.setLang(newLang, { reload: false });
+      }
     });
 
-    const changeLang = () => {
-      if (window.AppI18n) window.AppI18n.setLang(currentLang.value, { reload: false });
-    };
+    window.addEventListener('app-language-change', (e) => {
+      const newLang = e.detail.lang;
+      if (currentLang.value !== newLang) {
+        currentLang.value = newLang;
+      }
+      if (browserAk.value && (window.AMap || mapReady.value)) loadAmap();
+    });
 
     const mapLanguage = () => {
       const lang = window.AppI18n && window.AppI18n.getLang();
@@ -683,11 +688,6 @@ const app = createApp({
 
     onMounted(() => {
       initConfig();
-      window.addEventListener('app-language-change', () => {
-        if (browserAk.value && (window.AMap || mapInstance)) {
-          loadAmap();
-        }
-      });
     });
 
     return {
@@ -727,8 +727,7 @@ const app = createApp({
       routeJsonHtml,
       nearbyJsonHtml,
       t,
-      currentLang,
-      changeLang
+      currentLang
     };
   }
 });

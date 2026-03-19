@@ -1,4 +1,4 @@
-import { createApp, ref, onMounted, reactive, markRaw, computed } from 'vue';
+import { createApp, ref, onMounted, reactive, markRaw, computed, watch } from 'vue';
 import ElementPlus, { ElMessage } from 'element-plus';
 import 'element-plus/dist/index.css';
 import { MapUtils } from '../shared/utils.js';
@@ -18,14 +18,19 @@ const app = createApp({
       return window.AppI18n ? window.AppI18n.t(key, fallback, params) : (fallback || key);
     };
 
-    window.addEventListener('app-language-change', (e) => {
-      currentLang.value = e.detail.lang;
-      if (apiKey.value && (window.google || mapReady.value)) loadGoogleMap();
+    watch(currentLang, (newLang) => {
+      if (window.AppI18n && window.AppI18n.getLang() !== newLang) {
+        window.AppI18n.setLang(newLang, { reload: false });
+      }
     });
 
-    const changeLang = (e) => {
-      if (window.AppI18n) window.AppI18n.setLang(e.target.value, { reload: false });
-    };
+    window.addEventListener('app-language-change', (e) => {
+      const newLang = e.detail.lang;
+      if (currentLang.value !== newLang) {
+        currentLang.value = newLang;
+      }
+      if (apiKey.value && (window.google || mapReady.value)) loadGoogleMap();
+    });
 
     const mapLanguage = () => {
       const lang = window.AppI18n && window.AppI18n.getLang();
@@ -815,8 +820,7 @@ const app = createApp({
       routeJsonHtml,
       nearbyJsonHtml,
       t,
-      currentLang,
-      changeLang
+      currentLang
     };
   }
 });
