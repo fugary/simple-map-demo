@@ -86,6 +86,7 @@ jobs:
         run: npm run build
 
       - name: Delete existing release and tag (if any)
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
