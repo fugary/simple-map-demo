@@ -513,8 +513,10 @@ const app = createApp({
           }
 
           const apiPath = mapScope.value === 'international' ? 'place_abroad/v1/search' : 'place/v2/search';
+          const regionStr = globalRegion.value && globalRegion.value !== '全国' ? globalRegion.value : '全国';
+          const cityLimitParam = regionStr !== '全国' ? '&city_limit=true' : '';
           const res = await MapUtils.jsonp(
-            `https://api.map.baidu.com/${apiPath}?query=${encodeURIComponent(searchForm.keyword)}&region=${encodeURIComponent(globalRegion.value || '全国')}&output=json&ak=${serverAk.value}`
+            `https://api.map.baidu.com/${apiPath}?query=${encodeURIComponent(searchForm.keyword)}&region=${encodeURIComponent(regionStr)}${cityLimitParam}&output=json&ak=${serverAk.value}`
           );
           serverSearchRawData.value = res;
           searchResults.value = res && res.status === 0
@@ -546,8 +548,9 @@ const app = createApp({
           },
           pageCapacity: searchForm.count || 10
         });
-        if (globalRegion.value && globalRegion.value !== '全国') local.setLocation(globalRegion.value);
-        local.search(searchForm.keyword);
+        const isCityLimited = globalRegion.value && globalRegion.value !== '全国';
+        if (isCityLimited) local.setLocation(globalRegion.value);
+        local.search(searchForm.keyword, { forceLocal: true, city_limit: true });
       } catch (error) {
         console.error(error);
         searchResults.value = [];
@@ -922,8 +925,10 @@ const app = createApp({
           }
 
           const base = mapScope.value === 'international' ? 'direction_abroad/v1' : 'directionlite/v1';
+          const regionStr = globalRegion.value && globalRegion.value !== '全国' ? globalRegion.value : '';
+          const cityLimitStr = regionStr ? '&city_limit=true' : '';
           const res = await MapUtils.jsonp(
-            `https://api.map.baidu.com/${base}/${routeForm.travelMode}?output=json&ak=${serverAk.value}&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}`
+            `https://api.map.baidu.com/${base}/${routeForm.travelMode}?output=json&ak=${serverAk.value}&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}${cityLimitStr}`
           );
           routeResults.value = res ? markRaw(res) : null;
           if (res && res.status === 0) {
@@ -959,8 +964,10 @@ const app = createApp({
       }
 
       let routeInstance = null;
+      const isCityLimited = globalRegion.value && globalRegion.value !== '全国';
       const opts = {
         renderOptions: { map: mapInstance, autoViewport: true },
+        city_limit: isCityLimited,
         onSearchComplete: (result) => {
           routeLoading.value = false;
           try {
