@@ -136,6 +136,9 @@ const app = createApp({
     };
 
     const destroyMapInstance = () => {
+      if (mapInstance && typeof mapInstance.destroy === 'function') {
+        try { mapInstance.destroy(); } catch { /* ignore */ }
+      }
       mapInstance = null;
       mapReady.value = false;
       const container = document.getElementById('map-container');
