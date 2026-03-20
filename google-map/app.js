@@ -63,7 +63,7 @@ const app = createApp({
 
     const searchForm = reactive({
       apiMode: 'frontend',
-      keyword: 'Empire State Building',
+      keyword: '帝国大厦',
       count: 10
     });
     const searchResults = ref([]);
@@ -85,8 +85,8 @@ const app = createApp({
     const routeForm = reactive({
       apiMode: 'frontend',
       travelMode: 'DRIVING',
-      start: 'Times Square',
-      end: 'Empire State Building',
+      start: '时报广场',
+      end: '帝国大厦',
       startCoords: '',
       endCoords: ''
     });

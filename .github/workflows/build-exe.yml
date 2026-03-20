@@ -85,6 +85,14 @@ jobs:
       - name: Verify frontend build
         run: npm run build
 
+      - name: Delete existing release and tag (if any)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="v${{ github.event.inputs.version }}"
+          gh release delete "$VERSION" --yes --cleanup-tag || true
+          git push origin --delete "$VERSION" || true
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:

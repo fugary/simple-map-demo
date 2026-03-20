@@ -26,7 +26,7 @@
               </a>
               <div class="app-lang-switch">
                 <label for="app-lang-select">{{ t('common.langLabel') }}</label>
-                <select id="app-lang-select" v-model="currentLang" @change="changeLang">
+                <select id="app-lang-select" v-model="currentLang">
                   <option value="zh">ZH</option>
                   <option value="en">EN</option>
                 </select>
@@ -64,8 +64,8 @@
                   <el-form :model="searchForm" label-width="60px" @submit.prevent style="display: flex; flex-direction: column; height: 100%;">
                     <el-form-item :label="t('common.apiMode')">
                       <el-radio-group v-model="searchForm.apiMode">
-                        <el-radio label="frontend">{{ t('search.modes.frontend') }} (Places Service)</el-radio>
-                        <el-radio label="server">{{ t('search.modes.server') }} (Web API)</el-radio>
+                        <el-radio value="frontend">{{ t('search.modes.frontend') }} (Places Service)</el-radio>
+                        <el-radio value="server">{{ t('search.modes.server') }} (Web API)</el-radio>
                       </el-radio-group>
                     </el-form-item>
                     <el-row :gutter="10">
@@ -133,8 +133,8 @@
                   <el-form :model="routeForm" label-width="70px" @submit.prevent style="display: flex; flex-direction: column; height: 100%;">
                     <el-form-item :label="t('common.apiMode')">
                       <el-radio-group v-model="routeForm.apiMode">
-                        <el-radio label="frontend">{{ t('route.modes.frontend') }} (DirectionsService)</el-radio>
-                        <el-radio label="server">{{ t('route.modes.server') }} (Directions API)</el-radio>
+                        <el-radio value="frontend">{{ t('route.modes.frontend') }} (DirectionsService)</el-radio>
+                        <el-radio value="server">{{ t('route.modes.server') }} (Directions API)</el-radio>
                       </el-radio-group>
                     </el-form-item>
                     <el-form-item :label="t('route.start')">
@@ -151,10 +151,10 @@
                     </el-form-item>
                     <el-form-item :label="t('route.travelMode')">
                       <el-radio-group v-model="routeForm.travelMode">
-                        <el-radio label="DRIVING">{{ t('route.modes.driving') }}</el-radio>
-                        <el-radio label="TRANSIT">{{ t('route.modes.transit') }}</el-radio>
-                        <el-radio label="WALKING">{{ t('route.modes.walking') }}</el-radio>
-                        <el-radio label="BICYCLING">{{ t('route.modes.riding') }}</el-radio>
+                        <el-radio value="DRIVING">{{ t('route.modes.driving') }}</el-radio>
+                        <el-radio value="TRANSIT">{{ t('route.modes.transit') }}</el-radio>
+                        <el-radio value="WALKING">{{ t('route.modes.walking') }}</el-radio>
+                        <el-radio value="BICYCLING">{{ t('route.modes.riding') }}</el-radio>
                       </el-radio-group>
                     </el-form-item>
 
@@ -248,8 +248,8 @@
                   <el-form :model="locateForm" label-width="80px" @submit.prevent style="display: flex; flex-direction: column; height: 100%;">
                     <el-form-item :label="t('common.apiMode')">
                       <el-radio-group v-model="locateForm.apiMode">
-                        <el-radio label="frontend">{{ t('search.modes.frontend') }} (Places)</el-radio>
-                        <el-radio label="server">{{ t('search.modes.server') }} (Nearby API)</el-radio>
+                        <el-radio value="frontend">{{ t('search.modes.frontend') }} (Places)</el-radio>
+                        <el-radio value="server">{{ t('search.modes.server') }} (Nearby API)</el-radio>
                       </el-radio-group>
                     </el-form-item>
                     <el-form-item :label="t('locate.center')">

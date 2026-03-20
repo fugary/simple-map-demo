@@ -26,7 +26,7 @@
               </a>
               <div class="app-lang-switch">
                 <label for="app-lang-select">{{ t('common.langLabel') }}</label>
-                <select id="app-lang-select" v-model="currentLang" @change="changeLang">
+                <select id="app-lang-select" v-model="currentLang">
                   <option value="zh">ZH</option>
                   <option value="en">EN</option>
                 </select>
@@ -70,9 +70,9 @@
                   <el-form :model="searchForm" label-width="60px" @submit.prevent style="display: flex; flex-direction: column; height: 100%;">
                     <el-form-item :label="t('common.apiMode')">
                       <el-radio-group v-model="searchForm.apiMode">
-                        <el-radio label="webgl">{{ t('search.modes.webgl') }}</el-radio>
-                        <el-radio label="server">{{ t('search.modes.server') }} (Place API)</el-radio>
-                        <el-radio v-if="hasGooglePlaceProvider" label="google">{{ t('search.modes.google') }}</el-radio>
+                        <el-radio value="webgl">{{ t('search.modes.webgl') }}</el-radio>
+                        <el-radio value="server">{{ t('search.modes.server') }} (Place API)</el-radio>
+                        <el-radio v-if="hasGooglePlaceProvider" value="google">{{ t('search.modes.google') }}</el-radio>
                       </el-radio-group>
                     </el-form-item>
                     <el-row :gutter="10">
@@ -140,9 +140,9 @@
                   <el-form :model="routeForm" label-width="70px" @submit.prevent style="display: flex; flex-direction: column; height: 100%;">
                     <el-form-item :label="t('common.apiMode')">
                       <el-radio-group v-model="routeForm.apiMode">
-                        <el-radio label="webgl">{{ t('route.modes.webgl') }}</el-radio>
-                        <el-radio label="server">{{ t('route.modes.server') }} (Direction API)</el-radio>
-                        <el-radio v-if="hasGoogleRouteProvider" label="google">{{ t('route.modes.google') }}</el-radio>
+                        <el-radio value="webgl">{{ t('route.modes.webgl') }}</el-radio>
+                        <el-radio value="server">{{ t('route.modes.server') }} (Direction API)</el-radio>
+                        <el-radio v-if="hasGoogleRouteProvider" value="google">{{ t('route.modes.google') }}</el-radio>
                       </el-radio-group>
                     </el-form-item>
                     <el-form-item :label="t('route.start')">
@@ -159,10 +159,10 @@
                     </el-form-item>
                     <el-form-item :label="t('route.travelMode')">
                       <el-radio-group v-model="routeForm.travelMode">
-                        <el-radio label="driving">{{ t('route.modes.driving') }}</el-radio>
-                        <el-radio label="transit">{{ t('route.modes.transit') }}</el-radio>
-                        <el-radio label="walking">{{ t('route.modes.walking') }}</el-radio>
-                        <el-radio label="riding">{{ t('route.modes.riding') }}</el-radio>
+                        <el-radio value="driving">{{ t('route.modes.driving') }}</el-radio>
+                        <el-radio value="transit">{{ t('route.modes.transit') }}</el-radio>
+                        <el-radio value="walking">{{ t('route.modes.walking') }}</el-radio>
+                        <el-radio value="riding">{{ t('route.modes.riding') }}</el-radio>
                       </el-radio-group>
                     </el-form-item>
 
@@ -223,9 +223,9 @@
                   <el-form :model="locateForm" label-width="80px" @submit.prevent style="display: flex; flex-direction: column; height: 100%;">
                     <el-form-item :label="t('common.apiMode')">
                       <el-radio-group v-model="locateForm.apiMode">
-                        <el-radio label="webgl">{{ t('search.modes.webgl') }}</el-radio>
-                        <el-radio label="server">{{ t('search.modes.server') }} (Place API)</el-radio>
-                        <el-radio v-if="hasGooglePlaceProvider" label="google">{{ t('search.modes.google') }}</el-radio>
+                        <el-radio value="webgl">{{ t('search.modes.webgl') }}</el-radio>
+                        <el-radio value="server">{{ t('search.modes.server') }} (Place API)</el-radio>
+                        <el-radio v-if="hasGooglePlaceProvider" value="google">{{ t('search.modes.google') }}</el-radio>
                       </el-radio-group>
                     </el-form-item>
                     <el-form-item :label="t('locate.center')">
