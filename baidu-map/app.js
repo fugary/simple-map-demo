@@ -22,7 +22,7 @@ const app = createApp({
     const currentLang = ref(window.AppI18n ? window.AppI18n.getLang() : 'zh');
     const t = (key, fallback, params) => {
       // Access currentLang.value to trigger Vue reactivity tracking
-      currentLang.value; 
+      currentLang.value;
       return window.AppI18n ? window.AppI18n.t(key, fallback, params) : (fallback || key);
     };
 
@@ -47,7 +47,7 @@ const app = createApp({
     const serverAkList = ref([]);
     const serverAk = ref('');
     const regionList = ref([]);
-    const globalRegion = ref('New York');
+    const globalRegion = ref('纽约');
     const mapReady = ref(false);
     const activeTab = ref('config');
     const hasMapLoaded = ref(false);
@@ -443,7 +443,7 @@ const app = createApp({
         if (region && region !== '全国') {
           let point = await localSearchGeo(region);
           if (!point) point = await getCoords(region);
-          
+
           if (!point) {
             // Fallback to Google if Baidu fails (for overseas locations)
             try {
@@ -586,7 +586,7 @@ const app = createApp({
       if (!mapInstance) return;
       activeTab.value = 'search';
       searchForm.keyword = keyword;
-      if (!globalRegion.value) globalRegion.value = 'New York';
+      if (!globalRegion.value) globalRegion.value = '纽约';
       doSearch();
     };
 

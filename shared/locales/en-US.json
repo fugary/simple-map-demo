@@ -19,7 +19,7 @@
     "error": "Error",
     "info": "Info",
     "defaultCity": "Default City",
-    "placeholderCity": "e.g. Beijing / New York",
+    "placeholderCity": "e.g. 北京 / 纽约",
     "proxyUrl": "Proxy URL",
     "proxyPlaceholder": "Server Proxy Base URL",
     "none": "None",

@@ -19,7 +19,7 @@
     "error": "错误",
     "info": "信息",
     "defaultCity": "默认城市",
-    "placeholderCity": "例如：北京 / New York",
+    "placeholderCity": "例如：北京 / 纽约",
     "proxyUrl": "代理地址",
     "proxyPlaceholder": "服务端代理 Base URL",
     "none": "暂无",

@@ -14,7 +14,7 @@ const app = createApp({
     const currentLang = ref(window.AppI18n ? window.AppI18n.getLang() : 'zh');
     const t = (key, fallback, params) => {
       // Access currentLang.value to trigger Vue reactivity tracking
-      currentLang.value; 
+      currentLang.value;
       return window.AppI18n ? window.AppI18n.t(key, fallback, params) : (fallback || key);
     };
 
@@ -44,7 +44,7 @@ const app = createApp({
     const apiKeyList = ref([]);
     const apiKey = ref('');
     const regionList = ref([]);
-    const globalRegion = ref('New York');
+    const globalRegion = ref('纽约');
     const proxyBaseUrl = ref(DEFAULT_PROXY_BASE);
     const mapReady = ref(false);
     const activeTab = ref('config');
