@@ -22,7 +22,7 @@ const app = createApp({
     const currentLang = ref(window.AppI18n ? window.AppI18n.getLang() : 'zh');
     const t = (key, fallback, params) => {
       // Access currentLang.value to trigger Vue reactivity tracking
-      const lang = currentLang.value; 
+      currentLang.value; 
       return window.AppI18n ? window.AppI18n.t(key, fallback, params) : (fallback || key);
     };
 
@@ -162,8 +162,8 @@ const app = createApp({
     const buildPointItem = (title, address, lng, lat, raw = null) => ({
       title: title || 'Unnamed',
       address: `${address || 'Unknown'} [${Number(lng).toFixed(6)},${Number(lat).toFixed(6)}]`,
-      point: new window.BMapGL.Point(Number(lng), Number(lat)),
-      raw
+      point: markRaw(new window.BMapGL.Point(Number(lng), Number(lat))),
+      raw: raw ? markRaw(raw) : null
     });
 
     const formatGoogleDisplayAddress = ({ originalAddress, baiduAddress, googleLocation, baiduLocation }) => {
@@ -206,8 +206,8 @@ const app = createApp({
         originalAddress: item.address || 'Unknown',
         baiduAddress: '',
         googleLocation: item.location,
-        point: new window.BMapGL.Point(Number(coords.lng), Number(coords.lat)),
-        raw: item.raw
+        point: markRaw(new window.BMapGL.Point(Number(coords.lng), Number(coords.lat))),
+        raw: item.raw ? markRaw(item.raw) : item.raw
       };
     };
 
@@ -536,8 +536,8 @@ const app = createApp({
                 searchResults.value.push({
                   title: poi.title || 'Unnamed',
                   address: `${poi.address || 'Unknown'} [${poi.point ? `${poi.point.lng.toFixed(6)},${poi.point.lat.toFixed(6)}` : ''}]`,
-                  point: poi.point,
-                  raw: poi
+                  point: poi.point ? markRaw(poi.point) : null,
+                  raw: poi ? markRaw(poi) : null
                 });
               }
             } else {
@@ -592,8 +592,8 @@ const app = createApp({
               items.push({
                 title: poi.title || 'Unnamed',
                 address: `${poi.address || 'Unknown'} [${poi.point ? `${poi.point.lng.toFixed(6)},${poi.point.lat.toFixed(6)}` : ''}]`,
-                point: poi.point,
-                raw: poi
+                point: poi.point ? markRaw(poi.point) : null,
+                raw: poi ? markRaw(poi) : null
               });
             }
           }

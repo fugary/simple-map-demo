@@ -15,7 +15,7 @@ const app = createApp({
     const currentLang = ref(window.AppI18n ? window.AppI18n.getLang() : 'zh');
     const t = (key, fallback, params) => {
       // Access currentLang.value to trigger Vue reactivity tracking
-      const lang = currentLang.value; 
+      currentLang.value; 
       return window.AppI18n ? window.AppI18n.t(key, fallback, params) : (fallback || key);
     };
 
