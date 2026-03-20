@@ -50,6 +50,7 @@ const app = createApp({
     const globalRegion = ref('New York');
     const mapReady = ref(false);
     const activeTab = ref('config');
+    const hasMapLoaded = ref(false);
     const mapScope = ref('domestic');
     const hasGoogleRouteProvider = ref(false);
     const hasGooglePlaceProvider = ref(false);
@@ -301,6 +302,7 @@ const app = createApp({
 
       if (!browserAk.value) {
         mapReady.value = true;
+        hasMapLoaded.value = true;
         mapLoading.value = false;
         return;
       }
@@ -461,6 +463,7 @@ const app = createApp({
         mapInstance.addControl(new window.BMapGL.ZoomControl());
 
         mapReady.value = true;
+        hasMapLoaded.value = true;
         mapLoading.value = false;
         autoDetectMapScope(region);
       } catch (error) {
@@ -1070,6 +1073,7 @@ const app = createApp({
       regionList,
       globalRegion,
       mapReady,
+      hasMapLoaded,
       mapScope,
       hasGoogleRouteProvider,
       hasGooglePlaceProvider,

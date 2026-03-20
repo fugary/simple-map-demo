@@ -65,7 +65,7 @@
                 </el-card>
               </el-tab-pane>
 
-              <el-tab-pane :label="t('search.tab')" name="search">
+              <el-tab-pane :label="t('search.tab')" name="search" :disabled="!hasMapLoaded">
                 <el-card class="box-card box-card-flex" shadow="never">
                   <el-form :model="searchForm" label-width="60px" @submit.prevent style="display: flex; flex-direction: column; height: 100%;">
                     <el-form-item :label="t('common.apiMode')">
@@ -135,7 +135,7 @@
                 </el-card>
               </el-tab-pane>
 
-              <el-tab-pane :label="t('route.tab')" name="route">
+              <el-tab-pane :label="t('route.tab')" name="route" :disabled="!hasMapLoaded">
                 <el-card class="box-card box-card-flex" shadow="never">
                   <el-form :model="routeForm" label-width="70px" @submit.prevent style="display: flex; flex-direction: column; height: 100%;">
                     <el-form-item :label="t('common.apiMode')">
@@ -218,7 +218,7 @@
                 </el-card>
               </el-tab-pane>
 
-              <el-tab-pane :label="t('locate.tab')" name="locate">
+              <el-tab-pane :label="t('locate.tab')" name="locate" :disabled="!hasMapLoaded">
                 <el-card class="box-card box-card-flex" shadow="never">
                   <el-form :model="locateForm" label-width="80px" @submit.prevent style="display: flex; flex-direction: column; height: 100%;">
                     <el-form-item :label="t('common.apiMode')">

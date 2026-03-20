@@ -50,6 +50,7 @@ const app = createApp({
     const globalRegion = ref('上海');
     const mapReady = ref(false);
     const activeTab = ref('config');
+    const hasMapLoaded = ref(false);
     let mapInstance = null;
     let routePlugin = null;
     let infoWindow = null;
@@ -213,6 +214,7 @@ const app = createApp({
 
       if (!browserAk.value) {
         mapReady.value = true;
+        hasMapLoaded.value = true;
         mapLoading.value = false;
         ElMessage.info('未填浏览器端 AK，仅可使用服务端模式相关功能');
         return;
@@ -328,6 +330,7 @@ const app = createApp({
         }
 
         mapReady.value = true;
+        hasMapLoaded.value = true;
         mapLoading.value = false;
         ElMessage.success('地图加载成功');
       } catch (error) {
@@ -700,6 +703,7 @@ const app = createApp({
       regionList,
       globalRegion,
       mapReady,
+      hasMapLoaded,
       mapLoading,
       searchLoading,
       routeLoading,

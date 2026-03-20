@@ -48,6 +48,7 @@ const app = createApp({
     const proxyBaseUrl = ref(DEFAULT_PROXY_BASE);
     const mapReady = ref(false);
     const activeTab = ref('config');
+    const hasMapLoaded = ref(false);
     let mapInstance = null;
     let directionsRenderer = null;
     let searchMarkers = [];
@@ -258,6 +259,7 @@ const app = createApp({
         }));
 
         mapReady.value = true;
+        hasMapLoaded.value = true;
         ElMessage.success('Google Maps 加载成功');
       } catch (error) {
         console.error('Map init error:', error);
@@ -793,6 +795,7 @@ const app = createApp({
       globalRegion,
       proxyBaseUrl,
       mapReady,
+      hasMapLoaded,
       loadGoogleMap,
       searchForm,
       searchResults,
