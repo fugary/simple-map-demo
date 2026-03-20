@@ -844,7 +844,7 @@ const app = createApp({
       }
 
       const converted = convertGoogleRouteToBaidu(raw);
-      routeResults.value = { provider: 'google', raw, converted };
+      routeResults.value = { provider: 'google', raw: raw ? markRaw(raw) : raw, converted: converted ? markRaw(converted) : converted };
       routeDetailInfo.value = parseGoogleDirectionsDetail(raw);
 
       if (window.BaiduRouteDrawer) {
@@ -925,7 +925,7 @@ const app = createApp({
           const res = await MapUtils.jsonp(
             `https://api.map.baidu.com/${base}/${routeForm.travelMode}?output=json&ak=${serverAk.value}&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}`
           );
-          routeResults.value = res;
+          routeResults.value = res ? markRaw(res) : null;
           if (res && res.status === 0) {
             routeDetailInfo.value = parseBaiduRouteDetail(res, routeForm.travelMode);
             if (window.BaiduRouteDrawer) {

@@ -697,7 +697,7 @@ const app = createApp({
         language: mapLanguage()
       })).then((response) => response.json());
 
-      routeResults.value = res;
+      routeResults.value = res ? markRaw(res) : null;
       if (res && res.status === 'OK' && Array.isArray(res.routes)) {
         routeDetailInfo.value = parseGoogleRouteDetail(res.routes);
         renderServerRoute(res, originPoint, destPoint);

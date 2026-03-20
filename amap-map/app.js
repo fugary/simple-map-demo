@@ -621,7 +621,7 @@ const app = createApp({
         try {
           const url = `https://restapi.amap.com/${version}/direction/${subPath}?${query}&output=json&key=${serverAk.value}`;
           const res = await MapUtils.jsonp(url);
-          routeResults.value = res;
+          routeResults.value = res ? markRaw(res) : null;
           if (res && res.status === '1') {
             routeDetailInfo.value = parseServerRouteDetail(res, routeForm.travelMode);
             if (mapInstance && window.AmapRouteDrawer) {
