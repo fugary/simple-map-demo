@@ -1013,8 +1013,10 @@ const app = createApp({
       if (mapScope.value === 'international') {
         if (!isNearby) {
           routeLoading.value = false;
-          ElMessage.warning('百度 WebGL 前端引擎不支持国际路线规划，请切换为“服务端”或“Google”模式');
+        } else {
+          locateLoading.value = false;
         }
+        ElMessage.warning('百度 WebGL 前端引擎不支持国际路线规划，请切换为“服务端”或“Google”模式');
         if (window.BaiduRouteDrawer) {
           window.BaiduRouteDrawer.drawRouteEndpoints(mapInstance, origin, destination);
         }

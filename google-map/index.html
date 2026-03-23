@@ -252,14 +252,6 @@
                         <el-radio value="server">{{ t('search.modes.server') }} (Nearby API)</el-radio>
                       </el-radio-group>
                     </el-form-item>
-                    <el-form-item :label="t('route.travelMode')">
-                      <el-radio-group v-model="locateForm.travelMode">
-                        <el-radio value="DRIVING">{{ t('route.modes.driving') }}</el-radio>
-                        <el-radio value="TRANSIT">{{ t('route.modes.transit') }}</el-radio>
-                        <el-radio value="WALKING">{{ t('route.modes.walking') }}</el-radio>
-                        <el-radio value="BICYCLING">{{ t('route.modes.riding') }}</el-radio>
-                      </el-radio-group>
-                    </el-form-item>
                     <el-form-item :label="t('locate.center')">
                       <el-input v-model="locateForm.input" :placeholder="t('locate.centerPlaceholder')" clearable />
                     </el-form-item>
@@ -271,6 +263,14 @@
                     </el-form-item>
                     <el-form-item :label="t('locate.count')">
                       <el-input-number v-model="locateForm.count" :min="1" :max="20" style="width: 100%" />
+                    </el-form-item>
+                    <el-form-item :label="t('route.travelMode')" v-if="locateForm.nearbyKeyword">
+                      <el-radio-group v-model="locateForm.travelMode">
+                        <el-radio value="DRIVING">{{ t('route.modes.driving') }}</el-radio>
+                        <el-radio value="TRANSIT">{{ t('route.modes.transit') }}</el-radio>
+                        <el-radio value="WALKING">{{ t('route.modes.walking') }}</el-radio>
+                        <el-radio value="BICYCLING">{{ t('route.modes.riding') }}</el-radio>
+                      </el-radio-group>
                     </el-form-item>
                     <el-button type="primary" :loading="locateLoading" @click="locateInput" style="width: 100%; margin-bottom: 12px;">{{ t('locate.resolveButton') }}</el-button>
                     <div class="location-resolve-card">
