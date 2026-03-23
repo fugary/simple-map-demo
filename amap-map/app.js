@@ -480,6 +480,8 @@ const app = createApp({
       locateLoading.value = true;
       nearbyResults.value = [];
       nearbyRawData.value = null;
+      selectedNearbyItem.value = null;
+      nearbyRouteDetailInfo.value = null;
 
       try {
         const center = await getCoords(input);
@@ -703,7 +705,11 @@ const app = createApp({
           }
         } catch (error) {
           console.error(error);
-          if (!isNearby) ElMessage.error(`路线规划失败: ${error.message}`);
+          if (!isNearby) {
+            ElMessage.error(`路线规划失败: ${error.message}`);
+          } else {
+            nearbyRouteDetailInfo.value = null;
+          }
         } finally {
           if (!isNearby) routeLoading.value = false;
           else locateLoading.value = false;
@@ -718,8 +724,12 @@ const app = createApp({
       if (travelMode === 'riding') PluginClass = AMap.Riding;
 
       if (!PluginClass) {
-        if (!isNearby) routeLoading.value = false;
-        else locateLoading.value = false;
+        if (!isNearby) {
+          routeLoading.value = false;
+        } else {
+          locateLoading.value = false;
+          nearbyRouteDetailInfo.value = null;
+        }
         ElMessage.warning('当前出行方式暂不支持');
         return;
       }

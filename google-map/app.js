@@ -594,6 +594,8 @@ const app = createApp({
       locateLoading.value = true;
       nearbyResults.value = [];
       nearbyRawData.value = null;
+      selectedNearbyItem.value = null;
+      nearbyRouteDetailInfo.value = null;
       clearNearbyMarkers();
 
       try {
@@ -741,15 +743,16 @@ const app = createApp({
 
     const calcServerRoute = async (originPoint, destPoint, travelMode, isNearby = false) => {
       const modeMap = {
-        DRIVING: 'driving',
-        WALKING: 'walking',
-        BICYCLING: 'bicycling',
-        TRANSIT: 'transit'
+        driving: 'driving',
+        walking: 'walking',
+        riding: 'bicycling',
+        transit: 'transit'
       };
+      const mode = modeMap[travelMode.toLowerCase()] || 'driving';
       const res = await MapUtils.fetchData(proxyUrl('directions/json', {
         origin: `${originPoint.lat},${originPoint.lng}`,
         destination: `${destPoint.lat},${destPoint.lng}`,
-        mode: modeMap[travelMode] || 'driving',
+        mode: mode,
         alternatives: 'true',
         key: apiKey.value,
         language: mapLanguage()
@@ -799,7 +802,10 @@ const app = createApp({
           routeForm.startCoords = '解析失败';
           routeLoading.value = false;
           ElMessage.error(`无法解析起点地址: ${startVal}`);
-        } else { locateLoading.value = false; }
+        } else { 
+          locateLoading.value = false;
+          nearbyRouteDetailInfo.value = null;
+        }
         return;
       }
       if (!isNearby) {
@@ -814,7 +820,10 @@ const app = createApp({
           routeForm.endCoords = '解析失败';
           routeLoading.value = false;
           ElMessage.error(`无法解析终点地址: ${endVal}`);
-        } else { locateLoading.value = false; }
+        } else { 
+          locateLoading.value = false;
+          nearbyRouteDetailInfo.value = null;
+        }
         return;
       }
       if (!isNearby) {
@@ -844,10 +853,18 @@ const app = createApp({
         else directionsRenderer = renderer;
 
         const directionsService = new google.maps.DirectionsService();
+        const apiModeMap = {
+          driving: 'DRIVING',
+          walking: 'WALKING',
+          riding: 'BICYCLING',
+          transit: 'TRANSIT'
+        };
+        const googleMode = apiModeMap[travelMode.toLowerCase()] || 'DRIVING';
+        
         directionsService.route({
           origin: originPoint,
           destination: destPoint,
-          travelMode: google.maps.TravelMode[travelMode],
+          travelMode: google.maps.TravelMode[googleMode],
           provideRouteAlternatives: true
         }, (result, status) => {
           if (!isNearby) routeLoading.value = false;

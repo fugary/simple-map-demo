@@ -264,15 +264,15 @@
                     <el-form-item :label="t('locate.count')" v-if="locateForm.nearbyKeyword">
                       <el-input-number v-model="locateForm.count" :min="1" :max="20" style="width: 100%" />
                     </el-form-item>
-                    <el-form-item :label="t('route.travelMode')" v-if="locateForm.nearbyKeyword">
+                    <el-button type="primary" :loading="locateLoading" @click="locateInput" style="width: 100%; margin-bottom: 12px;">{{ t('locate.resolveButton') }}</el-button>
+                    <el-form-item :label="t('route.travelMode')" v-if="locateForm.nearbyKeyword" style="margin-bottom: 12px;">
                       <el-radio-group v-model="locateForm.travelMode">
-                        <el-radio value="DRIVING">{{ t('route.modes.driving') }}</el-radio>
-                        <el-radio value="TRANSIT">{{ t('route.modes.transit') }}</el-radio>
-                        <el-radio value="WALKING">{{ t('route.modes.walking') }}</el-radio>
-                        <el-radio value="BICYCLING">{{ t('route.modes.riding') }}</el-radio>
+                        <el-radio value="driving">{{ t('route.modes.driving') }}</el-radio>
+                        <el-radio value="transit">{{ t('route.modes.transit') }}</el-radio>
+                        <el-radio value="walking">{{ t('route.modes.walking') }}</el-radio>
+                        <el-radio value="riding">{{ t('route.modes.riding') }}</el-radio>
                       </el-radio-group>
                     </el-form-item>
-                    <el-button type="primary" :loading="locateLoading" @click="locateInput" style="width: 100%; margin-bottom: 12px;">{{ t('locate.resolveButton') }}</el-button>
                     <div class="location-resolve-card">
                       <p>{{ t('locate.centerCoords') }}</p>
                       <el-tag size="large" type="success" effect="plain" v-if="locateForm.resolvedCoords">

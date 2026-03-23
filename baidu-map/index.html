@@ -237,7 +237,8 @@
                     <el-form-item :label="t('locate.radius')" v-if="locateForm.nearbyKeyword">
                       <el-input-number v-model="locateForm.radius" :min="100" :max="50000" :step="100" style="width: 100%" />
                     </el-form-item>
-                    <el-form-item :label="t('route.travelMode')" v-if="locateForm.nearbyKeyword">
+                    <el-button type="primary" :loading="locateLoading" @click="locateInput" style="width: 100%; margin-bottom: 12px;">{{ t('locate.resolveButton') }}</el-button>
+                    <el-form-item :label="t('route.travelMode')" v-if="locateForm.nearbyKeyword" style="margin-bottom: 12px;">
                       <el-radio-group v-model="locateForm.travelMode">
                         <el-radio value="driving">{{ t('route.modes.driving') }}</el-radio>
                         <el-radio value="transit">{{ t('route.modes.transit') }}</el-radio>
@@ -245,7 +246,6 @@
                         <el-radio value="riding">{{ t('route.modes.riding') }}</el-radio>
                       </el-radio-group>
                     </el-form-item>
-                    <el-button type="primary" :loading="locateLoading" @click="locateInput" style="width: 100%; margin-bottom: 12px;">{{ t('locate.resolveButton') }}</el-button>
                     <div class="location-resolve-card">
                       <p>{{ t('locate.centerCoords') }}</p>
                       <el-tag size="large" type="success" effect="plain" v-if="locateForm.resolvedCoords">
@@ -259,7 +259,7 @@
                         <strong>{{ selectedNearbyItem.title }}</strong>
                         <p class="card-address">{{ selectedNearbyItem.address }}</p>
                         <div class="card-route-info" v-if="nearbyRouteDetailInfo && nearbyRouteDetailInfo.length > 0">
-                          <span>🚗 {{ nearbyRouteDetailInfo[0].distance || '未知' }}</span>
+                          <span>{{ getTravelModeIcon(locateForm.travelMode) }} {{ nearbyRouteDetailInfo[0].distance || '未知' }}</span>
                           <span>⏱️ {{ nearbyRouteDetailInfo[0].duration || '未知' }}</span>
                         </div>
                       </div>

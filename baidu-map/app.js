@@ -672,6 +672,8 @@ const app = createApp({
       locateLoading.value = true;
       nearbyResults.value = [];
       nearbyRawData.value = null;
+      selectedNearbyItem.value = null;
+      nearbyRouteDetailInfo.value = null;
 
       try {
         let centerPoint = null;
@@ -935,6 +937,9 @@ const app = createApp({
             if (!isNearby) {
               routeLoading.value = false;
               ElMessage.error('无法解析 Google 路线起终点');
+            } else {
+              locateLoading.value = false;
+              nearbyRouteDetailInfo.value = null;
             }
             return;
           }
@@ -950,9 +955,14 @@ const app = createApp({
           await calcGoogleRouteForBaidu(originalOrigin, originalDestination, travelMode, isNearby);
         } catch (error) {
           console.error(error);
-          if (!isNearby) ElMessage.error(`Google 路线数据转换失败: ${error.message}`);
+          if (!isNearby) {
+            ElMessage.error(`Google 路线数据转换失败: ${error.message}`);
+          } else {
+            nearbyRouteDetailInfo.value = null;
+          }
         } finally {
           if (!isNearby) routeLoading.value = false;
+          else locateLoading.value = false;
         }
         return;
       }
@@ -964,6 +974,9 @@ const app = createApp({
           routeForm.startCoords = '解析失败';
           routeLoading.value = false;
           ElMessage.error(`无法解析起点地址: ${startVal}`);
+        } else {
+          locateLoading.value = false;
+          nearbyRouteDetailInfo.value = null;
         }
         return;
       }
@@ -972,6 +985,9 @@ const app = createApp({
           routeForm.endCoords = '解析失败';
           routeLoading.value = false;
           ElMessage.error(`无法解析终点地址: ${endVal}`);
+        } else {
+          locateLoading.value = false;
+          nearbyRouteDetailInfo.value = null;
         }
         return;
       }
@@ -991,6 +1007,9 @@ const app = createApp({
             if (!isNearby) {
               routeLoading.value = false;
               ElMessage.warning('请先配置服务端 AK');
+            } else {
+              locateLoading.value = false;
+              nearbyRouteDetailInfo.value = null;
             }
             return;
           }
@@ -1019,14 +1038,21 @@ const app = createApp({
           } else {
             if (!isNearby) {
               routeDetailInfo.value = null;
-              ElMessage.error(`路线规划失败: ${res.info || res.message || 'Unknown'}`);
+              ElMessage.error(`路线规划失败: ${res.status || 'Unknown'}`);
+            } else {
+              nearbyRouteDetailInfo.value = null;
             }
           }
         } catch (error) {
           console.error(error);
-          if (!isNearby) ElMessage.error(`路线规划失败: ${error.message}`);
+          if (!isNearby) {
+            ElMessage.error(`路线规划失败: ${error.message}`);
+          } else {
+            nearbyRouteDetailInfo.value = null;
+          }
         } finally {
           if (!isNearby) routeLoading.value = false;
+          else locateLoading.value = false;
         }
         return;
       }
@@ -1036,6 +1062,7 @@ const app = createApp({
           routeLoading.value = false;
         } else {
           locateLoading.value = false;
+          nearbyRouteDetailInfo.value = null;
         }
         ElMessage.warning('百度 WebGL 前端引擎不支持国际路线规划，请切换为“服务端”或“Google”模式');
         if (window.BaiduRouteDrawer) {
@@ -1204,6 +1231,7 @@ const app = createApp({
       calcRoute,
       selectedNearbyItem,
       nearbyRouteDetailInfo,
+      getTravelModeIcon: MapUtils.getTravelModeIcon,
       copyJson: MapUtils.copyJson,
       searchJsonHtml,
       routeJsonHtml,
