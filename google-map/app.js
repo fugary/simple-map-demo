@@ -402,8 +402,10 @@ const app = createApp({
       }
 
       searchLoading.value = true;
+      const clearLoader = MapUtils.withTimeout(searchLoading);
 
       if (searchForm.apiMode === 'server') {
+        clearRenderedRoute();
         clearSearchMarkers();
         serverSearchRawData.value = null;
         try {
@@ -433,15 +435,18 @@ const app = createApp({
           ElMessage.error(`服务端搜索请求失败: ${error.message}`);
         } finally {
           searchLoading.value = false;
+          clearLoader();
         }
         return;
       }
 
       if (!mapReady.value || !mapInstance) {
         searchLoading.value = false;
+        clearLoader();
         return;
       }
 
+      clearRenderedRoute();
       clearSearchMarkers();
       serverSearchRawData.value = null;
       const service = new google.maps.places.PlacesService(mapInstance);
@@ -455,6 +460,7 @@ const app = createApp({
 
       service.textSearch(request, (results, status) => {
         searchLoading.value = false;
+        clearLoader();
         if (status === google.maps.places.PlacesServiceStatus.OK && Array.isArray(results)) {
           searchResults.value = results
             .slice(0, searchForm.count || 10)
@@ -597,10 +603,14 @@ const app = createApp({
         return;
       }
 
+      locateLoading.value = true;
+      const clearLoader = MapUtils.withTimeout(locateLoading);
+
       nearbyRawData.value = null;
       selectedNearbyItem.value = null;
       nearbyRouteDetailInfo.value = null;
       nearbyRouteError.value = '';
+      clearRenderedRoute();
       clearNearbyMarkers();
 
       try {
@@ -616,6 +626,8 @@ const app = createApp({
         if (!locateForm.nearbyKeyword.trim()) {
           renderNearbyResults(centerPoint, []);
           ElMessage.success('中心点解析成功');
+          locateLoading.value = false;
+          clearLoader();
           return;
         }
 
@@ -656,6 +668,7 @@ const app = createApp({
         ElMessage.error(`附近搜索失败: ${error.message}`);
       } finally {
         locateLoading.value = false;
+        clearLoader();
       }
     };
 
@@ -794,54 +807,52 @@ const app = createApp({
     const doCalcRoute = async (apiMode, travelMode, startVal, endVal, isNearby = false) => {
       if (!mapReady.value || !mapInstance) return;
 
-      if (!isNearby) {
-        routeLoading.value = true;
-        routeDetailInfo.value = null;
-        routeResults.value = null;
-      } else {
-        locateLoading.value = true;
-        nearbyRouteError.value = ''; // Clear error when starting a new nearby route calculation
-      }
-
-      const originPoint = await resolveLocation(startVal, apiMode);
-      if (!originPoint) {
-        if (!isNearby) {
-          routeForm.startCoords = '解析失败';
-          routeLoading.value = false;
-          ElMessage.error(`无法解析起点地址: ${startVal}`);
-        } else { 
-          locateLoading.value = false;
-          nearbyRouteDetailInfo.value = null;
-          nearbyRouteError.value = `无法解析起点地址: ${startVal}`;
-        }
-        return;
-      }
-      if (!isNearby) {
-        routeForm.startCoords = MapUtils.parseCoords(startVal)
-          ? ''
-          : `${originPoint.lng.toFixed(6)}, ${originPoint.lat.toFixed(6)}`;
-      }
-
-      const destPoint = await resolveLocation(endVal, apiMode);
-      if (!destPoint) {
-        if (!isNearby) {
-          routeForm.endCoords = '解析失败';
-          routeLoading.value = false;
-          ElMessage.error(`无法解析终点地址: ${endVal}`);
-        } else { 
-          locateLoading.value = false;
-          nearbyRouteDetailInfo.value = null;
-          nearbyRouteError.value = `无法解析终点地址: ${endVal}`;
-        }
-        return;
-      }
-      if (!isNearby) {
-        routeForm.endCoords = MapUtils.parseCoords(endVal)
-          ? ''
-          : `${destPoint.lng.toFixed(6)}, ${destPoint.lat.toFixed(6)}`;
-      }
+      const loadingRef = isNearby ? locateLoading : routeLoading;
+      loadingRef.value = true;
+      const clearLoader = MapUtils.withTimeout(loadingRef);
 
       try {
+        if (!isNearby) {
+          routeDetailInfo.value = null;
+          routeResults.value = null;
+        } else {
+          nearbyRouteError.value = ''; // Clear error when starting a new nearby route calculation
+        }
+
+        const originPoint = await resolveLocation(startVal, apiMode);
+        if (!originPoint) {
+          if (!isNearby) {
+            routeForm.startCoords = '解析失败';
+            ElMessage.error(`无法解析起点地址: ${startVal}`);
+          } else {
+            nearbyRouteDetailInfo.value = null;
+            nearbyRouteError.value = `无法解析起点地址: ${startVal}`;
+          }
+          return;
+        }
+        if (!isNearby) {
+          routeForm.startCoords = MapUtils.parseCoords(startVal)
+            ? ''
+            : `${originPoint.lng.toFixed(6)}, ${originPoint.lat.toFixed(6)}`;
+        }
+
+        const destPoint = await resolveLocation(endVal, apiMode);
+        if (!destPoint) {
+          if (!isNearby) {
+            routeForm.endCoords = '解析失败';
+            ElMessage.error(`无法解析终点地址: ${endVal}`);
+          } else {
+            nearbyRouteDetailInfo.value = null;
+            nearbyRouteError.value = `无法解析终点地址: ${endVal}`;
+          }
+          return;
+        }
+        if (!isNearby) {
+          routeForm.endCoords = MapUtils.parseCoords(endVal)
+            ? ''
+            : `${destPoint.lng.toFixed(6)}, ${destPoint.lat.toFixed(6)}`;
+        }
+
         if (!isNearby) {
           clearRenderedRoute();
           clearSearchMarkers();
@@ -869,44 +880,43 @@ const app = createApp({
           transit: 'TRANSIT'
         };
         const googleMode = apiModeMap[travelMode.toLowerCase()] || 'DRIVING';
-        
-        directionsService.route({
-          origin: originPoint,
-          destination: destPoint,
-          travelMode: google.maps.TravelMode[googleMode],
-          provideRouteAlternatives: true
-        }, (result, status) => {
-          if (!isNearby) routeLoading.value = false;
-          else locateLoading.value = false;
-          
-          if (status === 'OK') {
-            renderer.setDirections(result);
-            if (!isNearby) {
-              routeDetailInfo.value = parseGoogleRouteDetail(result.routes);
-              ElMessage.success('路线规划成功');
+
+        // Wrap directionsService.route in a Promise so we can use try/finally correctly
+        await new Promise((resolve) => {
+          directionsService.route({
+            origin: originPoint,
+            destination: destPoint,
+            travelMode: google.maps.TravelMode[googleMode],
+            provideRouteAlternatives: true
+          }, (result, status) => {
+            if (status === 'OK') {
+              renderer.setDirections(result);
+              if (!isNearby) {
+                routeDetailInfo.value = parseGoogleRouteDetail(result.routes);
+                ElMessage.success('路线规划成功');
+              } else {
+                nearbyRouteDetailInfo.value = parseGoogleRouteDetail(result.routes);
+                nearbyRouteError.value = ''; // Clear error on success
+              }
             } else {
-              nearbyRouteDetailInfo.value = parseGoogleRouteDetail(result.routes);
-              nearbyRouteError.value = ''; // Clear error on success
+              if (!isNearby) {
+                routeDetailInfo.value = null;
+                ElMessage.error(`路线规划失败: ${status}`);
+              } else {
+                nearbyRouteDetailInfo.value = null;
+                nearbyRouteError.value = `路线规划失败: ${status}`;
+              }
             }
-          } else {
-            if (!isNearby) {
-              routeDetailInfo.value = null;
-              ElMessage.error(`路线规划失败: ${status}`);
-            } else {
-              nearbyRouteDetailInfo.value = null;
-              nearbyRouteError.value = `路线规划失败: ${status}`;
-            }
-          }
+            resolve();
+          });
         });
       } catch (error) {
         console.error('Route error:', error);
         if (!isNearby) ElMessage.error(`路线规划失败: ${error.message}`);
         else nearbyRouteError.value = `Route error: ${error.message}`;
       } finally {
-        if (apiMode === 'server') {
-          if (!isNearby) routeLoading.value = false;
-          else locateLoading.value = false;
-        }
+        loadingRef.value = false;
+        clearLoader();
       }
     };
 

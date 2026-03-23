@@ -2,6 +2,12 @@
 
 ## 2026-03-23
 
+### 路线规划清理与加载超时保护 (Baidu/Google/Amap)
+- **优化**: 为所有图商的搜索、定位及路线规划功能引入了加载超时自动重置机制（使用 `MapUtils.withTimeout`）。如果在 10 秒内请求未返回或 SDK 发生异常（如未触发回调），加载状态将自动重构为 `false`，解决长时间卡死在 loading 状态的问题。
+- **修复 (Google)**: 修复了在 Google 地图中使用附近搜索或地点搜索时，旧的路线图层未被正确清理的问题。现在每次发起新搜索都会调用 `clearRenderedRoute()`。
+- **重构 (Baidu)**: 深度重构了百度地图的 `doCalcRoute` 函数，统一了 WebGL 前端方案与服务端方案的异步控制流，使用 `Promise` 包装 SDK 回调并配合 `try/finally` 确保加载状态在任何路径下（成功/失败/超时）都能正确闭环。
+- **优化 (Amap)**: 同步重构了高德地图的加载与规划逻辑，确保状态管理的健壮性。
+
 ### 新增 Tauri 原生直连 Google Server API (无需代理) 与 UI 优化
 - **优化**: 之前由于浏览器的跨域(CORS)限制，Google Maps 的 Web API（如 TextSearch/Directions）必须经过中转代理服务器。现在通过在 `src-tauri` 后端手写暴露出 `native_http_get` 请求指令（基于 Rust `reqwest` 库），如果检测到当前应用运行在 Tauri 桌面端环境中，前端会自动拦截请求并使用原生途径直连 `maps.googleapis.com`，实现了 **零CORS阻碍、彻底告别本地调试代理**！
 - **改动**: 新装 `reqwest` 后端依赖，扩展 `MapUtils.fetchData` 智能网络调度器，并重构了 `google-map/app.js` 的所有服务端 `fetch` 逻辑。同时通过在 Vue 模板中增加 `v-if="!isTauri"` 条件，在桌面端环境下自动隐藏掉“代理配置”填写框，提升用户体验。

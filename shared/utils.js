@@ -292,6 +292,16 @@ const getTravelModeIcon = (mode) => {
   return '🚗';
 };
 
+const withTimeout = (loadingRef, timeoutMs = 20000) => {
+  const timer = setTimeout(() => {
+    if (loadingRef && loadingRef.value) {
+      loadingRef.value = false;
+      console.warn(`[MapUtils] Loading timeout triggered after ${timeoutMs}ms`);
+    }
+  }, timeoutMs);
+  return () => clearTimeout(timer);
+};
+
 export const MapUtils = {
   getTravelModeIcon,
   highlightJson,
@@ -315,7 +325,8 @@ export const MapUtils = {
   googleToBaiduCoords,
   baiduToGoogleCoords,
   buildBaiduPointData,
-  calculateDistance
+  calculateDistance,
+  withTimeout
 };
 
 if (typeof window !== 'undefined') {

@@ -324,6 +324,7 @@ const app = createApp({
       }
 
       mapLoading.value = true;
+      const clearLoader = MapUtils.withTimeout(mapLoading);
       MapUtils.saveConfigVal(browserAkList, browserAk.value, 'baidu_map_browser_aks');
       MapUtils.saveConfigVal(serverAkList, serverAk.value, 'baidu_map_server_aks');
       MapUtils.saveConfigVal(regionList, globalRegion.value, 'baidu_map_regions');
@@ -354,6 +355,7 @@ const app = createApp({
       script.src = `https://api.map.baidu.com/api?v=1.0&type=webgl&ak=${browserAk.value}&language=${desiredLang}&callback=initBaiduMapCallback&_=${Date.now()}`;
       script.onerror = () => {
         mapLoading.value = false;
+        clearLoader();
         ElMessage.error('百度地图引擎加载失败，请检查 AK 或网络');
       };
       document.body.appendChild(script);
@@ -493,6 +495,7 @@ const app = createApp({
         mapReady.value = true;
         hasMapLoaded.value = true;
         mapLoading.value = false;
+        if (typeof clearLoader === 'function') clearLoader();
         autoDetectMapScope(region);
       } catch (error) {
         console.error(error);
@@ -505,6 +508,7 @@ const app = createApp({
       if (!searchForm.keyword) return;
 
       searchLoading.value = true;
+      const clearLoader = MapUtils.withTimeout(searchLoading);
       searchResults.value = [];
       serverSearchRawData.value = null;
 
@@ -589,6 +593,7 @@ const app = createApp({
         ElMessage.error(`地点搜索失败: ${error.message}`);
       } finally {
         searchLoading.value = false;
+        clearLoader();
       }
     };
 
@@ -676,6 +681,7 @@ const app = createApp({
       if (!input) return;
 
       locateLoading.value = true;
+      const clearLoader = MapUtils.withTimeout(locateLoading);
       nearbyResults.value = [];
       nearbyRawData.value = null;
       selectedNearbyItem.value = null;
@@ -767,6 +773,7 @@ const app = createApp({
         ElMessage.error(`附近搜索失败: ${error.message}`);
       } finally {
         locateLoading.value = false;
+        clearLoader();
       }
     };
 
@@ -912,7 +919,7 @@ const app = createApp({
 
       if (window.BaiduRouteDrawer) {
         window.BaiduRouteDrawer.drawServerRoute(mapInstance, converted, travelMode, {
-          startName: '起',
+          startNam: '起',
           endName: '终',
           showRouteEndpoints: true
         });
@@ -927,100 +934,81 @@ const app = createApp({
     const doCalcRoute = async (apiMode, travelMode, startVal, endVal, isNearby = false) => {
       if (!startVal || !endVal) return;
 
-      if (!isNearby) {
-        routeLoading.value = true;
-        routeDetailInfo.value = null;
-        routeResults.value = null;
-        clearDrawings();
-      } else {
-        clearNearbyRouteDrawings();
-        nearbyRouteError.value = '';
-      }
+      const loadingRef = isNearby ? locateLoading : routeLoading;
+      loadingRef.value = true;
+      const clearLoader = MapUtils.withTimeout(loadingRef);
 
-      if (apiMode === 'google') {
-        try {
+      try {
+        if (!isNearby) {
+          routeDetailInfo.value = null;
+          routeResults.value = null;
+          clearDrawings();
+        } else {
+          clearNearbyRouteDrawings();
+          nearbyRouteError.value = '';
+        }
+
+        if (apiMode === 'google') {
           const originalOrigin = await resolveGoogleCoordsRaw(startVal);
           const originalDestination = await resolveGoogleCoordsRaw(endVal);
           if (!originalOrigin || !originalDestination) {
             if (!isNearby) {
-              routeLoading.value = false;
               ElMessage.error('无法解析 Google 路线起终点');
             } else {
-              locateLoading.value = false;
               nearbyRouteDetailInfo.value = null;
               nearbyRouteError.value = '无法解析 Google 路线起终点';
             }
             return;
           }
 
-          const originBaidu = MapUtils.googleToBaiduCoords(originalOrigin.lng, originalOrigin.lat);
-          const destinationBaidu = MapUtils.googleToBaiduCoords(originalDestination.lng, originalDestination.lat);
-
           if (!isNearby) {
+            const originBaidu = MapUtils.googleToBaiduCoords(originalOrigin.lng, originalOrigin.lat);
+            const destinationBaidu = MapUtils.googleToBaiduCoords(originalDestination.lng, originalDestination.lat);
             routeForm.startCoords = `G: ${originalOrigin.lng.toFixed(6)}, ${originalOrigin.lat.toFixed(6)} | B: ${originBaidu.lng.toFixed(6)}, ${originBaidu.lat.toFixed(6)}`;
             routeForm.endCoords = `G: ${originalDestination.lng.toFixed(6)}, ${originalDestination.lat.toFixed(6)} | B: ${destinationBaidu.lng.toFixed(6)}, ${destinationBaidu.lat.toFixed(6)}`;
           }
 
           await calcGoogleRouteForBaidu(originalOrigin, originalDestination, travelMode, isNearby);
-        } catch (error) {
-          console.error(error);
+          return;
+        }
+
+        const origin = await getCoords(startVal);
+        const destination = await getCoords(endVal);
+        if (!origin) {
           if (!isNearby) {
-            ElMessage.error(`Google 路线数据转换失败: ${error.message}`);
+            routeForm.startCoords = '解析失败';
+            ElMessage.error(`无法解析起点地址: ${startVal}`);
           } else {
             nearbyRouteDetailInfo.value = null;
-            nearbyRouteError.value = `Google 路线数据转换失败: ${error.message}`;
+            nearbyRouteError.value = `无法解析起点地址: ${startVal}`;
           }
-        } finally {
-          if (!isNearby) routeLoading.value = false;
-          else locateLoading.value = false;
+          return;
         }
-        return;
-      }
+        if (!destination) {
+          if (!isNearby) {
+            routeForm.endCoords = '解析失败';
+            ElMessage.error(`无法解析终点地址: ${endVal}`);
+          } else {
+            nearbyRouteDetailInfo.value = null;
+            nearbyRouteError.value = `无法解析终点地址: ${endVal}`;
+          }
+          return;
+        }
 
-      const origin = await getCoords(startVal);
-      const destination = await getCoords(endVal);
-      if (!origin) {
         if (!isNearby) {
-          routeForm.startCoords = '解析失败';
-          routeLoading.value = false;
-          ElMessage.error(`无法解析起点地址: ${startVal}`);
-        } else {
-          locateLoading.value = false;
-          nearbyRouteDetailInfo.value = null;
-          nearbyRouteError.value = `无法解析起点地址: ${startVal}`;
+          routeForm.startCoords = MapUtils.parseCoords(startVal)
+            ? ''
+            : `百度: ${origin.lng.toFixed(6)}, ${origin.lat.toFixed(6)}`;
+          routeForm.endCoords = MapUtils.parseCoords(endVal)
+            ? ''
+            : `百度: ${destination.lng.toFixed(6)}, ${destination.lat.toFixed(6)}`;
         }
-        return;
-      }
-      if (!destination) {
-        if (!isNearby) {
-          routeForm.endCoords = '解析失败';
-          routeLoading.value = false;
-          ElMessage.error(`无法解析终点地址: ${endVal}`);
-        } else {
-          locateLoading.value = false;
-          nearbyRouteDetailInfo.value = null;
-          nearbyRouteError.value = `无法解析终点地址: ${endVal}`;
-        }
-        return;
-      }
 
-      if (!isNearby) {
-        routeForm.startCoords = MapUtils.parseCoords(startVal)
-          ? ''
-          : `百度: ${origin.lng.toFixed(6)}, ${origin.lat.toFixed(6)}`;
-        routeForm.endCoords = MapUtils.parseCoords(endVal)
-          ? ''
-          : `百度: ${destination.lng.toFixed(6)}, ${destination.lat.toFixed(6)}`;
-      }
-
-      if (apiMode === 'server') {
-        try {
+        if (apiMode === 'server') {
           if (!serverAk.value) {
             if (!isNearby) {
-              routeLoading.value = false;
               ElMessage.warning('请先配置服务端 AK');
             } else {
-              locateLoading.value = false;
               nearbyRouteDetailInfo.value = null;
               nearbyRouteError.value = '请先配置服务端 AK';
             }
@@ -1033,7 +1021,7 @@ const app = createApp({
           const res = await MapUtils.jsonp(
             `https://api.map.baidu.com/${base}/${travelMode}?output=json&ak=${serverAk.value}&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}${cityLimitStr}`
           );
-          if (!isNearby) routeResults.value = res ? markRaw(res) : null;
+          if (!isNearby) routeResults.value = res ? markRaw(res) : res;
           if (res && res.status === 0) {
             if (!isNearby) {
               routeDetailInfo.value = parseBaiduRouteDetail(res, travelMode);
@@ -1057,155 +1045,147 @@ const app = createApp({
               nearbyRouteError.value = `路线规划失败: ${res.status || 'Unknown'}`;
             }
           }
-        } catch (error) {
-          console.error(error);
+          return;
+        }
+
+        if (mapScope.value === 'international') {
           if (!isNearby) {
-            ElMessage.error(`路线规划失败: ${error.message}`);
+             ElMessage.warning('百度 WebGL 前端引擎不支持 international 路线规划，已切换为服务端模式');
           } else {
             nearbyRouteDetailInfo.value = null;
-            nearbyRouteError.value = `路线规划失败: ${error.message}`;
+            nearbyRouteError.value = '百度前端引擎不支持国际路线规划';
           }
-        } finally {
-          if (!isNearby) routeLoading.value = false;
-          else locateLoading.value = false;
+          if (window.BaiduRouteDrawer) {
+            window.BaiduRouteDrawer.drawRouteEndpoints(mapInstance, origin, destination);
+          }
+          return;
         }
-        return;
-      }
 
-      if (mapScope.value === 'international') {
-        if (!isNearby) {
-          routeLoading.value = false;
-        } else {
-          locateLoading.value = false;
-          nearbyRouteDetailInfo.value = null;
-          nearbyRouteError.value = '百度前端引擎不支持国际路线规划';
-        }
-        ElMessage.warning('百度 WebGL 前端引擎不支持国际路线规划，请切换为“服务端”或“Google”模式');
-        if (window.BaiduRouteDrawer) {
-          window.BaiduRouteDrawer.drawRouteEndpoints(mapInstance, origin, destination);
-        }
-        return;
-      }
+        let routeInstance = null;
+        const isCityLimited = globalRegion.value && globalRegion.value !== '全国';
 
-      let routeInstance = null;
-      const isCityLimited = globalRegion.value && globalRegion.value !== '全国';
-      const opts = {
-        renderOptions: { map: mapInstance, autoViewport: true },
-        city_limit: isCityLimited,
-        onSearchComplete: (result) => {
-          if (!isNearby) routeLoading.value = false;
-          try {
-            if (!routeInstance || routeInstance.getStatus() !== window.BMAP_STATUS_SUCCESS) {
-            if (!isNearby) {
-              routeDetailInfo.value = null;
-              ElMessage.warning('未能找到有效路线');
-            } else {
-              nearbyRouteDetailInfo.value = null;
-              nearbyRouteError.value = '未能找到有效路线';
-            }
-              if (window.BaiduRouteDrawer) {
-                window.BaiduRouteDrawer.drawRouteEndpoints(mapInstance, origin, destination);
-              }
-              return;
-            }
-
-            if (!isNearby) {
-              if (travelMode === 'transit') {
-                const detail = [];
-                const count = result.getNumPlans ? result.getNumPlans() : 0;
-                for (let i = 0; i < count && i < 5; i += 1) {
-                  const plan = result.getPlan(i);
-                  if (!plan) continue;
-                  detail.push({
-                    index: i + 1,
-                    distance: plan.getDistance ? MapUtils.formatDistance(plan.getDistance(false)) : 'Unknown',
-                    duration: plan.getDuration ? MapUtils.formatDuration(plan.getDuration(false)) : 'Unknown',
-                    steps: [{
-                      index: 1,
-                      instruction: MapUtils.stripHtml(plan.getDescription ? plan.getDescription() : ''),
-                      distance: '',
-                      duration: ''
-                    }]
-                  });
+        await new Promise((resolve) => {
+          const opts = {
+            renderOptions: { map: mapInstance, autoViewport: true },
+            city_limit: isCityLimited,
+            onSearchComplete: (result) => {
+              try {
+                if (!routeInstance || routeInstance.getStatus() !== window.BMAP_STATUS_SUCCESS) {
+                  if (!isNearby) {
+                    routeDetailInfo.value = null;
+                    ElMessage.warning('未能找到有效路线');
+                  } else {
+                    nearbyRouteDetailInfo.value = null;
+                    nearbyRouteError.value = '未能找到有效路线';
+                  }
+                  if (window.BaiduRouteDrawer) {
+                    window.BaiduRouteDrawer.drawRouteEndpoints(mapInstance, origin, destination);
+                  }
+                  resolve();
+                  return;
                 }
+
+                if (travelMode === 'transit') {
+                  const detail = [];
+                  const count = result.getNumPlans ? result.getNumPlans() : 0;
+                  for (let i = 0; i < count && i < 5; i += 1) {
+                    const plan = result.getPlan(i);
+                    if (!plan) continue;
+                    detail.push({
+                      index: i + 1,
+                      distance: plan.getDistance ? MapUtils.formatDistance(plan.getDistance(false)) : 'Unknown',
+                      duration: plan.getDuration ? MapUtils.formatDuration(plan.getDuration(false)) : 'Unknown',
+                      steps: [{
+                        index: 1,
+                        instruction: MapUtils.stripHtml(plan.getDescription ? plan.getDescription() : ''),
+                        distance: '',
+                        duration: ''
+                      }]
+                    });
+                  }
+                  if (!isNearby) {
+                    routeDetailInfo.value = detail;
+                    ElMessage.success('路线规划成功');
+                  } else {
+                    nearbyRouteDetailInfo.value = detail;
+                  }
+                  resolve();
+                  return;
+                }
+
+                const plan = result.getPlan ? result.getPlan(0) : null;
+                if (!plan) {
+                  if (!isNearby) ElMessage.warning('未能找到有效路线');
+                  resolve();
+                  return;
+                }
+
+                const detail = {
+                  index: 1,
+                  distance: plan.getDistance ? MapUtils.formatDistance(plan.getDistance(false)) : 'Unknown',
+                  duration: plan.getDuration ? MapUtils.formatDuration(plan.getDuration(false)) : 'Unknown',
+                  steps: []
+                };
+
+                const routeCount = plan.getNumRoutes ? plan.getNumRoutes() : 1;
+                for (let routeIndex = 0; routeIndex < routeCount; routeIndex += 1) {
+                  const routeObject = plan.getRoute ? plan.getRoute(routeIndex) : null;
+                  if (!routeObject || !routeObject.getNumSteps) continue;
+                  for (let stepIndex = 0; stepIndex < routeObject.getNumSteps(); stepIndex += 1) {
+                    const step = routeObject.getStep(stepIndex);
+                    detail.steps.push({
+                      index: detail.steps.length + 1,
+                      instruction: MapUtils.stripHtml(step.getDescription ? step.getDescription(true) : ''),
+                      distance: step.getDistance ? MapUtils.formatDistance(step.getDistance(false)) : '',
+                      duration: ''
+                    });
+                  }
+                }
+
                 if (!isNearby) {
-                  routeDetailInfo.value = detail;
+                  routeDetailInfo.value = [detail];
                   ElMessage.success('路线规划成功');
                 } else {
-                  nearbyRouteDetailInfo.value = detail;
+                  nearbyRouteDetailInfo.value = [detail];
                 }
-                return;
-              }
-
-              const plan = result.getPlan ? result.getPlan(0) : null;
-              if (!plan) {
-                if (!isNearby) ElMessage.warning('未能找到有效路线');
-                return;
-              }
-
-              const detail = {
-                index: 1,
-                distance: plan.getDistance ? MapUtils.formatDistance(plan.getDistance(false)) : 'Unknown',
-                duration: plan.getDuration ? MapUtils.formatDuration(plan.getDuration(false)) : 'Unknown',
-                steps: []
-              };
-
-              const routeCount = plan.getNumRoutes ? plan.getNumRoutes() : 1;
-              for (let routeIndex = 0; routeIndex < routeCount; routeIndex += 1) {
-                const routeObject = plan.getRoute ? plan.getRoute(routeIndex) : null;
-                if (!routeObject || !routeObject.getNumSteps) continue;
-                for (let stepIndex = 0; stepIndex < routeObject.getNumSteps(); stepIndex += 1) {
-                  const step = routeObject.getStep(stepIndex);
-                  detail.steps.push({
-                    index: detail.steps.length + 1,
-                    instruction: MapUtils.stripHtml(step.getDescription ? step.getDescription(true) : ''),
-                    distance: step.getDistance ? MapUtils.formatDistance(step.getDistance(false)) : '',
-                    duration: ''
-                  });
-                }
-              }
-              
-              if (!isNearby) {
-                routeDetailInfo.value = [detail];
-                ElMessage.success('路线规划成功');
-              } else {
-                nearbyRouteDetailInfo.value = [detail];
+              } catch (err) {
+                console.error('Extraction error:', err);
+              } finally {
+                resolve();
               }
             }
-          } catch (error) {
-            console.warn('提取 WebGL 路线详情失败:', error);
-            if (!isNearby) ElMessage.error(`路线规划失败: ${error.message}`);
-            else nearbyRouteError.value = `路线规划失败: ${error.message}`;
+          };
+
+          if (travelMode === 'driving') routeInstance = new window.BMapGL.DrivingRoute(mapInstance, opts);
+          else if (travelMode === 'transit') routeInstance = new window.BMapGL.TransitRoute(mapInstance, opts);
+          else if (travelMode === 'walking') routeInstance = new window.BMapGL.WalkingRoute(mapInstance, opts);
+          else if (travelMode === 'riding') {
+            const createRidingRoute = window.BMapGL.RidingRoute || window.BMapGL.DrivingRoute;
+            routeInstance = new createRidingRoute(mapInstance, opts);
           }
-        }
-      };
 
-      if (travelMode === 'driving') routeInstance = new window.BMapGL.DrivingRoute(mapInstance, opts);
-      if (travelMode === 'transit') routeInstance = new window.BMapGL.TransitRoute(mapInstance, opts);
-      if (travelMode === 'walking') routeInstance = new window.BMapGL.WalkingRoute(mapInstance, opts);
-      if (travelMode === 'riding') {
-        const createRidingRoute = window.BMapGL.RidingRoute || window.BMapGL.DrivingRoute;
-        routeInstance = new createRidingRoute(mapInstance, opts);
+          if (!routeInstance) {
+            if (!isNearby) ElMessage.warning('当前出行方式暂不支持');
+            resolve();
+            return;
+          }
+
+          if (isNearby) activeNearbyRouteInstance = routeInstance;
+          else activeRouteInstance = routeInstance;
+
+          routeInstance.search(
+            new window.BMapGL.Point(origin.lng, origin.lat),
+            new window.BMapGL.Point(destination.lng, destination.lat)
+          );
+        });
+      } catch (error) {
+        console.error('Route error:', error);
+        if (!isNearby) ElMessage.error(`路线规划失败: ${error.message}`);
+        else nearbyRouteError.value = `路线规划失败: ${error.message}`;
+      } finally {
+        loadingRef.value = false;
+        clearLoader();
       }
-      if (!routeInstance) {
-        if (!isNearby) {
-          routeLoading.value = false;
-          ElMessage.warning('当前出行方式暂不支持');
-        } else {
-          locateLoading.value = false;
-          nearbyRouteDetailInfo.value = null;
-          nearbyRouteError.value = '当前出行方式暂不支持';
-        }
-        return;
-      }
-
-      if (isNearby) activeNearbyRouteInstance = routeInstance;
-      else activeRouteInstance = routeInstance;
-
-      routeInstance.search(
-        new window.BMapGL.Point(origin.lng, origin.lat),
-        new window.BMapGL.Point(destination.lng, destination.lat)
-      );
     };
 
     onMounted(() => {
