@@ -64,7 +64,7 @@ const app = createApp({
 
     const searchForm = reactive({
       apiMode: 'webgl',
-      keyword: '帝国大厦',
+      keyword: '自由女神像',
       count: 10
     });
     const searchResults = ref([]);
@@ -87,7 +87,7 @@ const app = createApp({
       apiMode: 'webgl',
       travelMode: 'driving',
       start: '时报广场',
-      end: '帝国大厦',
+      end: '自由女神像',
       startCoords: '',
       endCoords: ''
     });

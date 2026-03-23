@@ -38,6 +38,11 @@ const setLang = (lang, options = {}) => {
   const prev = getLang();
   localStorage.setItem(STORAGE_KEY, next);
   applyLanguage(); // Apply static DOM localizations immediately
+  
+  if (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) {
+    window.__TAURI__.core.invoke('update_menu_language', { lang: next }).catch(console.error);
+  }
+
   window.dispatchEvent(new CustomEvent('app-language-change', { detail: { lang: next, reload: options.reload } }));
   if (options.reload === true && next !== prev) {
     window.location.reload();
@@ -80,6 +85,10 @@ const applyLanguage = () => {
 
 const bootstrap = () => {
   applyLanguage();
+  
+  if (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) {
+    window.__TAURI__.core.invoke('update_menu_language', { lang: getLang() }).catch(console.error);
+  }
 };
 
 export const AppI18n = {
