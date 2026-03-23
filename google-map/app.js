@@ -98,6 +98,9 @@ const app = createApp({
     const routeResults = ref(null);
     const routeResultTab = ref('list');
 
+    const nearbyRouteDetailInfo = ref(null);
+    const selectedNearbyItem = ref(null);
+
     const searchJsonHtml = computed(() => {
       if (!serverSearchRawData.value) return '';
       return MapUtils.highlightJson(JSON.stringify(serverSearchRawData.value, null, 2));
@@ -613,6 +616,17 @@ const app = createApp({
           nearbyResults.value = result.items;
         }
 
+        if (nearbyResults.value && nearbyResults.value.length > 0) {
+          nearbyResults.value.forEach((item) => {
+            if (item.location) {
+              const dist = MapUtils.calculateDistance(centerPoint.lng, centerPoint.lat, item.location.lng, item.location.lat);
+              item.distance = dist;
+              item.distanceFormat = MapUtils.formatDistance(dist);
+            }
+          });
+          nearbyResults.value.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+        }
+
         renderNearbyResults(centerPoint, nearbyResults.value);
         if (nearbyResults.value.length > 0) {
           ElMessage.success(`找到 ${nearbyResults.value.length} 条附近结果`);
@@ -632,6 +646,8 @@ const app = createApp({
 
     const viewNearbyOnMap = (item) => {
       if (!item || !item.location) return;
+      selectedNearbyItem.value = item;
+
       if (locateForm.resolvedCoords) {
         doCalcRoute(locateForm.apiMode, locateForm.travelMode, locateForm.resolvedCoords, `${item.location.lng.toFixed(6)},${item.location.lat.toFixed(6)}`, true);
       } else {
@@ -733,13 +749,19 @@ const app = createApp({
 
       if (!isNearby) routeResults.value = res ? markRaw(res) : null;
       if (res && res.status === 'OK' && Array.isArray(res.routes)) {
-        if (!isNearby) routeDetailInfo.value = parseGoogleRouteDetail(res.routes);
+        if (!isNearby) {
+          routeDetailInfo.value = parseGoogleRouteDetail(res.routes);
+        } else {
+          nearbyRouteDetailInfo.value = parseGoogleRouteDetail(res.routes);
+        }
         renderServerRoute(res, originPoint, destPoint, isNearby);
         if (!isNearby) ElMessage.success('路线规划成功');
       } else {
         if (!isNearby) {
           routeDetailInfo.value = null;
           ElMessage.error(`路线规划失败: ${res.status || 'Unknown'}`);
+        } else {
+          nearbyRouteDetailInfo.value = null;
         }
       }
     };
@@ -828,11 +850,15 @@ const app = createApp({
             if (!isNearby) {
               routeDetailInfo.value = parseGoogleRouteDetail(result.routes);
               ElMessage.success('路线规划成功');
+            } else {
+              nearbyRouteDetailInfo.value = parseGoogleRouteDetail(result.routes);
             }
           } else {
             if (!isNearby) {
               routeDetailInfo.value = null;
               ElMessage.error(`路线规划失败: ${status}`);
+            } else {
+              nearbyRouteDetailInfo.value = null;
             }
           }
         });
@@ -881,6 +907,8 @@ const app = createApp({
       routeDetailInfo,
       routeResults,
       routeResultTab,
+      selectedNearbyItem,
+      nearbyRouteDetailInfo,
       calcRoute,
       copyJson: MapUtils.copyJson,
       searchJsonHtml,

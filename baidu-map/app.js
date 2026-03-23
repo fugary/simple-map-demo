@@ -96,6 +96,9 @@ const app = createApp({
     const routeDetailInfo = ref(null);
     const routeResultTab = ref('list');
 
+    const nearbyRouteDetailInfo = ref(null);
+    const selectedNearbyItem = ref(null);
+
     const searchJsonHtml = computed(() => (
       serverSearchRawData.value
         ? MapUtils.highlightJson(JSON.stringify(serverSearchRawData.value, null, 2))
@@ -600,6 +603,7 @@ const app = createApp({
 
     const viewNearbyOnMap = (item) => {
       if (!item || !item.point) return;
+      selectedNearbyItem.value = item;
 
       if (locateForm.resolvedCoords) {
         doCalcRoute(locateForm.apiMode, locateForm.travelMode, locateForm.resolvedCoords, `${item.point.lng.toFixed(6)},${item.point.lat.toFixed(6)}`, true);
@@ -732,6 +736,17 @@ const app = createApp({
             : [];
         } else {
           nearbyResults.value = await nearbyByFrontend(centerPoint);
+        }
+
+        if (nearbyResults.value && nearbyResults.value.length > 0) {
+          nearbyResults.value.forEach((item) => {
+            if (item.point) {
+              const dist = MapUtils.calculateDistance(centerPoint.lng, centerPoint.lat, item.point.lng, item.point.lat);
+              item.distance = dist;
+              item.distanceFormat = MapUtils.formatDistance(dist);
+            }
+          });
+          nearbyResults.value.sort((a, b) => (a.distance || 0) - (b.distance || 0));
         }
 
         renderNearbyItems(centerPoint, nearbyResults.value);
@@ -986,7 +1001,11 @@ const app = createApp({
           );
           if (!isNearby) routeResults.value = res ? markRaw(res) : null;
           if (res && res.status === 0) {
-            if (!isNearby) routeDetailInfo.value = parseBaiduRouteDetail(res, travelMode);
+            if (!isNearby) {
+              routeDetailInfo.value = parseBaiduRouteDetail(res, travelMode);
+            } else {
+              nearbyRouteDetailInfo.value = parseBaiduRouteDetail(res, travelMode);
+            }
             if (window.BaiduRouteDrawer) {
               window.BaiduRouteDrawer.drawServerRoute(mapInstance, res, travelMode, {
                 startName: '起',
@@ -1032,10 +1051,12 @@ const app = createApp({
           if (!isNearby) routeLoading.value = false;
           try {
             if (!routeInstance || routeInstance.getStatus() !== window.BMAP_STATUS_SUCCESS) {
-              if (!isNearby) {
-                routeDetailInfo.value = null;
-                ElMessage.warning('未能找到有效路线');
-              }
+            if (!isNearby) {
+              routeDetailInfo.value = null;
+              ElMessage.warning('未能找到有效路线');
+            } else {
+              nearbyRouteDetailInfo.value = null;
+            }
               if (window.BaiduRouteDrawer) {
                 window.BaiduRouteDrawer.drawRouteEndpoints(mapInstance, origin, destination);
               }
@@ -1061,14 +1082,18 @@ const app = createApp({
                     }]
                   });
                 }
-                routeDetailInfo.value = detail;
-                ElMessage.success('路线规划成功');
+                if (!isNearby) {
+                  routeDetailInfo.value = detail;
+                  ElMessage.success('路线规划成功');
+                } else {
+                  nearbyRouteDetailInfo.value = detail;
+                }
                 return;
               }
 
               const plan = result.getPlan ? result.getPlan(0) : null;
               if (!plan) {
-                ElMessage.warning('未能找到有效路线');
+                if (!isNearby) ElMessage.warning('未能找到有效路线');
                 return;
               }
 
@@ -1093,8 +1118,13 @@ const app = createApp({
                   });
                 }
               }
-              routeDetailInfo.value = [detail];
-              ElMessage.success('路线规划成功');
+              
+              if (!isNearby) {
+                routeDetailInfo.value = [detail];
+                ElMessage.success('路线规划成功');
+              } else {
+                nearbyRouteDetailInfo.value = [detail];
+              }
             }
           } catch (error) {
             console.warn('提取 WebGL 路线详情失败:', error);
@@ -1170,6 +1200,8 @@ const app = createApp({
       routeDetailInfo,
       routeResultTab,
       calcRoute,
+      selectedNearbyItem,
+      nearbyRouteDetailInfo,
       copyJson: MapUtils.copyJson,
       searchJsonHtml,
       routeJsonHtml,

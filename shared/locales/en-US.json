@@ -25,7 +25,8 @@
     "none": "None",
     "points": "Pts",
     "international": "INTL",
-    "domestic": "Local"
+    "domestic": "Local",
+    "distance": "Distance"
   },
   "home": {
     "title": "Map Web API Playground",

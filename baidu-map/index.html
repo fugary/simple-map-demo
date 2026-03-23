@@ -234,7 +234,7 @@
                     <el-form-item :label="t('locate.nearbyKeyword')">
                       <el-input v-model="locateForm.nearbyKeyword" :placeholder="t('locate.nearbyPlaceholder')" clearable />
                     </el-form-item>
-                    <el-form-item :label="t('locate.radius')">
+                    <el-form-item :label="t('locate.radius')" v-if="locateForm.nearbyKeyword">
                       <el-input-number v-model="locateForm.radius" :min="100" :max="50000" :step="100" style="width: 100%" />
                     </el-form-item>
                     <el-form-item :label="t('route.travelMode')" v-if="locateForm.nearbyKeyword">
@@ -254,6 +254,15 @@
                       <el-tag size="large" type="info" effect="plain" v-else>
                          {{ t('locate.noCoords') }}
                       </el-tag>
+
+                      <div v-if="selectedNearbyItem" class="selected-nearby-card">
+                        <strong>{{ selectedNearbyItem.title }}</strong>
+                        <p class="card-address">{{ selectedNearbyItem.address }}</p>
+                        <div class="card-route-info" v-if="nearbyRouteDetailInfo && nearbyRouteDetailInfo.length > 0">
+                          <span>🚗 {{ nearbyRouteDetailInfo[0].distance || '未知' }}</span>
+                          <span>⏱️ {{ nearbyRouteDetailInfo[0].duration || '未知' }}</span>
+                        </div>
+                      </div>
                     </div>
 
                     <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; margin-top: 16px;" v-if="nearbyResults.length > 0 || nearbyRawData">
@@ -261,6 +270,7 @@
                         <el-tab-pane :label="t('common.listTab')" name="list">
                           <el-table :data="nearbyResults" height="100%" style="width: 100%" @row-click="viewNearbyOnMap">
                             <el-table-column prop="title" :label="t('common.name')" width="130" show-overflow-tooltip></el-table-column>
+                            <el-table-column prop="distanceFormat" :label="t('common.distance')" width="80"></el-table-column>
                             <el-table-column prop="address" :label="t('common.address')" show-overflow-tooltip></el-table-column>
                             <el-table-column v-if="locateForm.apiMode === 'google'" prop="coordCompare" label="Google / 百度坐标" width="240" show-overflow-tooltip></el-table-column>
                           </el-table>
@@ -280,6 +290,7 @@
                       <template v-else-if="nearbyResults.length > 0">
                         <el-table :data="nearbyResults" height="100%" style="width: 100%" @row-click="viewNearbyOnMap">
                           <el-table-column prop="title" :label="t('common.name')" width="130" show-overflow-tooltip></el-table-column>
+                          <el-table-column prop="distanceFormat" :label="t('common.distance')" width="80"></el-table-column>
                           <el-table-column prop="address" :label="t('common.address')" show-overflow-tooltip></el-table-column>
                           <el-table-column v-if="locateForm.apiMode === 'google'" prop="coordCompare" label="Google / 百度坐标" width="240" show-overflow-tooltip></el-table-column>
                         </el-table>

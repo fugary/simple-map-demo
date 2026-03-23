@@ -94,6 +94,9 @@ const app = createApp({
     const routeDetailInfo = ref(null);
     const routeResultTab = ref('list');
 
+    const nearbyRouteDetailInfo = ref(null);
+    const selectedNearbyItem = ref(null);
+
     const searchJsonHtml = computed(() => {
       if (!serverSearchRawData.value) return '';
       return MapUtils.highlightJson(JSON.stringify(serverSearchRawData.value, null, 2));
@@ -450,6 +453,8 @@ const app = createApp({
 
     const viewNearbyOnMap = (item) => {
       if (!item || !item.point) return;
+      selectedNearbyItem.value = item;
+
       if (locateForm.resolvedCoords) {
         doCalcRoute(locateForm.apiMode, locateForm.travelMode, locateForm.resolvedCoords, `${item.point[0].toFixed(6)},${item.point[1].toFixed(6)}`, true);
       } else {
@@ -533,6 +538,17 @@ const app = createApp({
           nearbyResults.value = ((result.poiList && result.poiList.pois) || []).map((poi) =>
             buildPointItem(poi.name, poi.address || poi.adname, poi.location.lng, poi.location.lat, poi)
           );
+        }
+
+        if (nearbyResults.value && nearbyResults.value.length > 0) {
+          nearbyResults.value.forEach((item) => {
+            if (item.point) {
+              const dist = MapUtils.calculateDistance(centerPoint[0], centerPoint[1], item.point[0], item.point[1]);
+              item.distance = dist;
+              item.distanceFormat = MapUtils.formatDistance(dist);
+            }
+          });
+          nearbyResults.value.sort((a, b) => (a.distance || 0) - (b.distance || 0));
         }
 
         renderPointItems(centerPoint, nearbyResults.value);
@@ -665,7 +681,11 @@ const app = createApp({
           const res = await MapUtils.jsonp(url);
           if (!isNearby) routeResults.value = res ? markRaw(res) : null;
           if (res && res.status === '1') {
-            if (!isNearby) routeDetailInfo.value = parseServerRouteDetail(res, travelMode);
+            if (!isNearby) {
+              routeDetailInfo.value = parseServerRouteDetail(res, travelMode);
+            } else {
+              nearbyRouteDetailInfo.value = parseServerRouteDetail(res, travelMode);
+            }
             if (mapInstance && window.AmapRouteDrawer) {
               window.AmapRouteDrawer.drawServerRoute(mapInstance, res, travelMode, {
                 startName: '起',
@@ -674,7 +694,12 @@ const app = createApp({
             }
             if (!isNearby) ElMessage.success('路线规划成功');
           } else {
-            if (!isNearby) ElMessage.error(`路线规划失败: ${res.info || 'Unknown'}`);
+            if (!isNearby) {
+              routeDetailInfo.value = null;
+              ElMessage.error(`路线规划失败: ${res.info || 'Unknown'}`);
+            } else {
+              nearbyRouteDetailInfo.value = null;
+            }
           }
         } catch (error) {
           console.error(error);
@@ -712,28 +737,33 @@ const app = createApp({
         else locateLoading.value = false;
         
         if (status === 'complete' && result.info === 'OK') {
-          if (!isNearby) {
-            try {
-              const plans = result.plans || result.routes || [];
-              routeDetailInfo.value = plans.slice(0, 5).map((plan, idx) => ({
-                index: idx + 1,
-                distance: MapUtils.formatDistance(parseFloat(plan.distance || 0)),
-                duration: MapUtils.formatDuration(parseFloat(plan.time || plan.duration || 0)),
-                steps: (plan.steps || plan.segments || []).map((step, stepIndex) => ({
-                  index: stepIndex + 1,
-                  instruction: MapUtils.stripHtml(step.instruction || step.action || ''),
-                  distance: MapUtils.formatDistance(parseFloat(step.distance || 0)),
-                  duration: ''
-                }))
-              }));
-            } catch (error) {
-              console.warn('Failed to extract route detail:', error);
+          try {
+            const plans = result.plans || result.routes || [];
+            const detailArr = plans.slice(0, 5).map((plan, idx) => ({
+              index: idx + 1,
+              distance: MapUtils.formatDistance(parseFloat(plan.distance || 0)),
+              duration: MapUtils.formatDuration(parseFloat(plan.time || plan.duration || 0)),
+              steps: (plan.steps || plan.segments || []).map((step, stepIndex) => ({
+                index: stepIndex + 1,
+                instruction: MapUtils.stripHtml(step.instruction || step.action || ''),
+                distance: MapUtils.formatDistance(parseFloat(step.distance || 0)),
+                duration: ''
+              }))
+            }));
+            if (!isNearby) {
+              routeDetailInfo.value = detailArr;
+            } else {
+              nearbyRouteDetailInfo.value = detailArr;
             }
+          } catch (error) {
+            console.warn('Failed to extract route detail:', error);
           }
         } else {
           if (!isNearby) {
             routeDetailInfo.value = null;
             ElMessage.warning(`路线规划失败: ${status}`);
+          } else {
+            nearbyRouteDetailInfo.value = null;
           }
         }
       });
@@ -777,6 +807,8 @@ const app = createApp({
       routeDetailInfo,
       routeResultTab,
       calcRoute,
+      selectedNearbyItem,
+      nearbyRouteDetailInfo,
       copyJson: MapUtils.copyJson,
       searchJsonHtml,
       routeJsonHtml,

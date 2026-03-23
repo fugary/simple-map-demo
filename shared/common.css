@@ -367,6 +367,36 @@ html, body {
   margin: 0 0 6px 0;
 }
 
+.selected-nearby-card {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #d6e4f5;
+  text-align: left;
+}
+
+.selected-nearby-card strong {
+  color: #303133;
+  font-size: 13px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.selected-nearby-card .card-address {
+  color: #909399;
+  font-size: 12px;
+  margin: 0 0 6px 0;
+  line-height: 1.4;
+}
+
+.selected-nearby-card .card-route-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #67c23a;
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .app-lang-switch { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(255, 255, 255, 0.16); color: #fff; font-size: 12px; }
 .app-lang-switch select { border: 0; outline: none; border-radius: 8px; padding: 2px 6px; font-size: 12px; color: #333; }
 .app-lang-switch-floating { position: fixed; top: 14px; right: 14px; z-index: 2000; border: 1px solid rgba(0, 0, 0, 0.12); background: rgba(255, 255, 255, 0.92); color: #111; }

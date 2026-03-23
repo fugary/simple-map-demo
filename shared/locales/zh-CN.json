@@ -25,7 +25,8 @@
     "none": "暂无",
     "points": "点",
     "international": "国际",
-    "domestic": "国内"
+    "domestic": "国内",
+    "distance": "距离"
   },
   "home": {
     "title": "地图 Web API 测试平台",

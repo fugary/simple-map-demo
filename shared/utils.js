@@ -223,6 +223,20 @@ const bd09ToWgs84 = (lng, lat) => {
   return gcj02ToWgs84(gcj.lng, gcj.lat);
 };
 
+const calculateDistance = (lng1, lat1, lng2, lat2) => {
+  const toRad = p => (p * Math.PI) / 180;
+  const R = 6371e3;
+  const phi1 = toRad(lat1);
+  const phi2 = toRad(lat2);
+  const deltaPhi = toRad(lat2 - lat1);
+  const deltaLambda = toRad(lng2 - lng1);
+
+  const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+            Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
 const normalizeGoogleCoordSource = (sourceType = 'auto', lng, lat) => {
   if (sourceType === 'gcj02' || sourceType === 'wgs84') return sourceType;
   return isOutOfChina(Number(lng), Number(lat)) ? 'wgs84' : 'gcj02';
@@ -276,7 +290,8 @@ export const MapUtils = {
   normalizeGoogleCoordSource,
   googleToBaiduCoords,
   baiduToGoogleCoords,
-  buildBaiduPointData
+  buildBaiduPointData,
+  calculateDistance
 };
 
 if (typeof window !== 'undefined') {
