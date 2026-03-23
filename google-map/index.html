@@ -252,6 +252,14 @@
                         <el-radio value="server">{{ t('search.modes.server') }} (Nearby API)</el-radio>
                       </el-radio-group>
                     </el-form-item>
+                    <el-form-item :label="t('route.travelMode')">
+                      <el-radio-group v-model="locateForm.travelMode">
+                        <el-radio value="DRIVING">{{ t('route.modes.driving') }}</el-radio>
+                        <el-radio value="TRANSIT">{{ t('route.modes.transit') }}</el-radio>
+                        <el-radio value="WALKING">{{ t('route.modes.walking') }}</el-radio>
+                        <el-radio value="BICYCLING">{{ t('route.modes.riding') }}</el-radio>
+                      </el-radio-group>
+                    </el-form-item>
                     <el-form-item :label="t('locate.center')">
                       <el-input v-model="locateForm.input" :placeholder="t('locate.centerPlaceholder')" clearable />
                     </el-form-item>

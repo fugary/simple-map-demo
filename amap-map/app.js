@@ -53,6 +53,7 @@ const app = createApp({
     const hasMapLoaded = ref(false);
     let mapInstance = null;
     let routePlugin = null;
+    let nearbyRoutePlugin = null;
     let infoWindow = null;
 
     const mapLoading = ref(false);
@@ -71,6 +72,7 @@ const app = createApp({
 
     const locateForm = reactive({
       apiMode: 'jsapi',
+      travelMode: 'driving',
       input: '',
       resolvedCoords: '',
       nearbyKeyword: '',
@@ -157,6 +159,18 @@ const app = createApp({
       }
       if (routePlugin && typeof routePlugin.clear === 'function') {
         routePlugin.clear();
+      }
+      if (nearbyRoutePlugin && typeof nearbyRoutePlugin.clear === 'function') {
+        nearbyRoutePlugin.clear();
+      }
+    };
+
+    const clearNearbyRouteDrawings = () => {
+      if (window.AmapRouteDrawer) {
+        window.AmapRouteDrawer.clearRoute(mapInstance, true);
+      }
+      if (nearbyRoutePlugin && typeof nearbyRoutePlugin.clear === 'function') {
+        nearbyRoutePlugin.clear();
       }
     };
 
@@ -437,10 +451,7 @@ const app = createApp({
     const viewNearbyOnMap = (item) => {
       if (!item || !item.point) return;
       if (locateForm.resolvedCoords) {
-        routeForm.start = locateForm.resolvedCoords;
-        routeForm.end = `${item.point[0].toFixed(6)},${item.point[1].toFixed(6)}`;
-        routeForm.apiMode = locateForm.apiMode;
-        calcRoute();
+        doCalcRoute(locateForm.apiMode, locateForm.travelMode, locateForm.resolvedCoords, `${item.point[0].toFixed(6)},${item.point[1].toFixed(6)}`, true);
       } else {
         viewOnMap(item);
       }
@@ -582,122 +593,148 @@ const app = createApp({
       });
     };
 
-    const calcRoute = async () => {
+    const calcRoute = () => {
       if (!routeForm.start || !routeForm.end) {
         ElMessage.warning('请输入完整起点和终点');
         return;
       }
+      doCalcRoute(routeForm.apiMode, routeForm.travelMode, routeForm.start, routeForm.end, false);
+    };
 
-      routeLoading.value = true;
-      routeDetailInfo.value = null;
-      routeResults.value = null;
+    const doCalcRoute = async (apiMode, travelMode, startVal, endVal, isNearby = false) => {
+      if (!mapReady.value || !mapInstance) return;
 
-      const origin = await getCoords(routeForm.start);
+      if (!isNearby) {
+        routeLoading.value = true;
+        routeDetailInfo.value = null;
+        routeResults.value = null;
+      } else {
+        locateLoading.value = true;
+      }
+
+      const origin = await getCoords(startVal);
       if (!origin) {
-        routeForm.startCoords = '解析失败';
-        routeLoading.value = false;
-        ElMessage.error(`无法解析起点地址: ${routeForm.start}`);
-        return;
-      }
-      routeForm.startCoords = MapUtils.parseCoords(routeForm.start)
-        ? ''
-        : `${origin.lng.toFixed(6)}, ${origin.lat.toFixed(6)}`;
-
-      const destination = await getCoords(routeForm.end);
-      if (!destination) {
-        routeForm.endCoords = '解析失败';
-        routeLoading.value = false;
-        ElMessage.error(`无法解析终点地址: ${routeForm.end}`);
-        return;
-      }
-      routeForm.endCoords = MapUtils.parseCoords(routeForm.end)
-        ? ''
-        : `${destination.lng.toFixed(6)}, ${destination.lat.toFixed(6)}`;
-
-      clearDrawings();
-
-      if (routeForm.apiMode === 'server') {
-        if (!serverAk.value) {
+        if (!isNearby) {
+          routeForm.startCoords = '解析失败';
           routeLoading.value = false;
+          ElMessage.error(`无法解析起点地址: ${startVal}`);
+        } else { locateLoading.value = false; }
+        return;
+      }
+      if (!isNearby) {
+        routeForm.startCoords = MapUtils.parseCoords(startVal) ? '' : `${origin.lng.toFixed(6)}, ${origin.lat.toFixed(6)}`;
+      }
+
+      const destination = await getCoords(endVal);
+      if (!destination) {
+        if (!isNearby) {
+          routeForm.endCoords = '解析失败';
+          routeLoading.value = false;
+          ElMessage.error(`无法解析终点地址: ${endVal}`);
+        } else { locateLoading.value = false; }
+        return;
+      }
+      if (!isNearby) {
+        routeForm.endCoords = MapUtils.parseCoords(endVal) ? '' : `${destination.lng.toFixed(6)}, ${destination.lat.toFixed(6)}`;
+      }
+
+      if (!isNearby) clearDrawings();
+      else clearNearbyRouteDrawings();
+
+      if (apiMode === 'server') {
+        if (!serverAk.value) {
+          if (!isNearby) routeLoading.value = false;
+          else locateLoading.value = false;
           ElMessage.warning('需要配置服务端 AK');
           return;
         }
 
         let subPath = 'driving';
-        if (routeForm.travelMode === 'transit') subPath = 'transit/integrated';
-        if (routeForm.travelMode === 'walking') subPath = 'walking';
-        if (routeForm.travelMode === 'riding') subPath = 'bicycling';
-        const version = routeForm.travelMode === 'riding' ? 'v4' : 'v3';
+        if (travelMode === 'transit') subPath = 'transit/integrated';
+        if (travelMode === 'walking') subPath = 'walking';
+        if (travelMode === 'riding') subPath = 'bicycling';
+        const version = travelMode === 'riding' ? 'v4' : 'v3';
 
         let query = `origin=${origin.lng},${origin.lat}&destination=${destination.lng},${destination.lat}`;
-        if (routeForm.travelMode === 'transit') {
-          query += `&city=${encodeURIComponent(globalRegion.value === '全国' ? '北京' : globalRegion.value)}`;
+        if (travelMode === 'transit') {
+            query += `&city=${encodeURIComponent(globalRegion.value === '全国' ? '北京' : globalRegion.value)}`;
         }
 
         try {
           const url = `https://restapi.amap.com/${version}/direction/${subPath}?${query}&output=json&key=${serverAk.value}`;
           const res = await MapUtils.jsonp(url);
-          routeResults.value = res ? markRaw(res) : null;
+          if (!isNearby) routeResults.value = res ? markRaw(res) : null;
           if (res && res.status === '1') {
-            routeDetailInfo.value = parseServerRouteDetail(res, routeForm.travelMode);
+            if (!isNearby) routeDetailInfo.value = parseServerRouteDetail(res, travelMode);
             if (mapInstance && window.AmapRouteDrawer) {
-              window.AmapRouteDrawer.drawServerRoute(mapInstance, res, routeForm.travelMode, {
+              window.AmapRouteDrawer.drawServerRoute(mapInstance, res, travelMode, {
                 startName: '起',
                 endName: '终'
-              });
+              }, isNearby);
             }
-            ElMessage.success('路线规划成功');
+            if (!isNearby) ElMessage.success('路线规划成功');
           } else {
-            ElMessage.error(`路线规划失败: ${res.info || 'Unknown'}`);
+            if (!isNearby) ElMessage.error(`路线规划失败: ${res.info || 'Unknown'}`);
           }
         } catch (error) {
           console.error(error);
-          ElMessage.error(`路线规划失败: ${error.message}`);
+          if (!isNearby) ElMessage.error(`路线规划失败: ${error.message}`);
         } finally {
-          routeLoading.value = false;
+          if (!isNearby) routeLoading.value = false;
+          else locateLoading.value = false;
         }
         return;
       }
 
       let PluginClass = null;
-      if (routeForm.travelMode === 'driving') PluginClass = AMap.Driving;
-      if (routeForm.travelMode === 'transit') PluginClass = AMap.Transfer;
-      if (routeForm.travelMode === 'walking') PluginClass = AMap.Walking;
-      if (routeForm.travelMode === 'riding') PluginClass = AMap.Riding;
+      if (travelMode === 'driving') PluginClass = AMap.Driving;
+      if (travelMode === 'transit') PluginClass = AMap.Transfer;
+      if (travelMode === 'walking') PluginClass = AMap.Walking;
+      if (travelMode === 'riding') PluginClass = AMap.Riding;
 
       if (!PluginClass) {
-        routeLoading.value = false;
+        if (!isNearby) routeLoading.value = false;
+        else locateLoading.value = false;
         ElMessage.warning('当前出行方式暂不支持');
         return;
       }
 
-      routePlugin = new PluginClass({
+      const pluginInstance = new PluginClass({
         map: mapInstance,
         city: globalRegion.value && globalRegion.value !== '全国' ? globalRegion.value : '北京市'
       });
+      
+      if (isNearby) nearbyRoutePlugin = pluginInstance;
+      else routePlugin = pluginInstance;
 
-      routePlugin.search([origin.lng, origin.lat], [destination.lng, destination.lat], (status, result) => {
-        routeLoading.value = false;
+      pluginInstance.search([origin.lng, origin.lat], [destination.lng, destination.lat], (status, result) => {
+        if (!isNearby) routeLoading.value = false;
+        else locateLoading.value = false;
+        
         if (status === 'complete' && result.info === 'OK') {
-          try {
-            const plans = result.plans || result.routes || [];
-            routeDetailInfo.value = plans.slice(0, 5).map((plan, idx) => ({
-              index: idx + 1,
-              distance: MapUtils.formatDistance(parseFloat(plan.distance || 0)),
-              duration: MapUtils.formatDuration(parseFloat(plan.time || plan.duration || 0)),
-              steps: (plan.steps || plan.segments || []).map((step, stepIndex) => ({
-                index: stepIndex + 1,
-                instruction: MapUtils.stripHtml(step.instruction || step.action || ''),
-                distance: MapUtils.formatDistance(parseFloat(step.distance || 0)),
-                duration: ''
-              }))
-            }));
-          } catch (error) {
-            console.warn('Failed to extract route detail:', error);
+          if (!isNearby) {
+            try {
+              const plans = result.plans || result.routes || [];
+              routeDetailInfo.value = plans.slice(0, 5).map((plan, idx) => ({
+                index: idx + 1,
+                distance: MapUtils.formatDistance(parseFloat(plan.distance || 0)),
+                duration: MapUtils.formatDuration(parseFloat(plan.time || plan.duration || 0)),
+                steps: (plan.steps || plan.segments || []).map((step, stepIndex) => ({
+                  index: stepIndex + 1,
+                  instruction: MapUtils.stripHtml(step.instruction || step.action || ''),
+                  distance: MapUtils.formatDistance(parseFloat(step.distance || 0)),
+                  duration: ''
+                }))
+              }));
+            } catch (error) {
+              console.warn('Failed to extract route detail:', error);
+            }
           }
         } else {
-          routeDetailInfo.value = null;
-          ElMessage.warning(`路线规划失败: ${status}`);
+          if (!isNearby) {
+            routeDetailInfo.value = null;
+            ElMessage.warning(`路线规划失败: ${status}`);
+          }
         }
       });
     };

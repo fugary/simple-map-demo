@@ -228,6 +228,14 @@
                         <el-radio v-if="hasGooglePlaceProvider" value="google">{{ t('search.modes.google') }}</el-radio>
                       </el-radio-group>
                     </el-form-item>
+                    <el-form-item :label="t('route.travelMode')">
+                      <el-radio-group v-model="locateForm.travelMode">
+                        <el-radio value="driving">{{ t('route.modes.driving') }}</el-radio>
+                        <el-radio value="transit">{{ t('route.modes.transit') }}</el-radio>
+                        <el-radio value="walking">{{ t('route.modes.walking') }}</el-radio>
+                        <el-radio value="riding">{{ t('route.modes.riding') }}</el-radio>
+                      </el-radio-group>
+                    </el-form-item>
                     <el-form-item :label="t('locate.center')">
                       <el-input v-model="locateForm.input" :placeholder="t('locate.centerPlaceholder')" clearable />
                     </el-form-item>

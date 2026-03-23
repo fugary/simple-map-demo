@@ -6,13 +6,16 @@
  */
 window.AmapRouteDrawer = (() => {
   let currentOverlays = [];
+  let nearbyOverlays = [];
 
-  const clearRoute = (map) => {
+  const clearRoute = (map, isNearby = false) => {
     if (!map) return;
-    currentOverlays.forEach(overlay => {
+    const overlays = isNearby ? nearbyOverlays : currentOverlays;
+    overlays.forEach(overlay => {
        if (map.remove) map.remove(overlay);
     });
-    currentOverlays = [];
+    if (isNearby) nearbyOverlays = [];
+    else currentOverlays = [];
   };
 
   /**
@@ -39,7 +42,7 @@ window.AmapRouteDrawer = (() => {
     return svg;
   };
 
-  const drawRouteEndpoints = (map, startPt, endPt, startName = '起', endName = '终') => {
+  const drawRouteEndpoints = (map, startPt, endPt, startName = '起', endName = '终', isNearby = false) => {
     const sp = [startPt.lng, startPt.lat];
     const ep = [endPt.lng, endPt.lat];
 
@@ -58,12 +61,13 @@ window.AmapRouteDrawer = (() => {
 
     map.add(startMarker);
     map.add(endMarker);
-    currentOverlays.push(startMarker, endMarker);
+    if (isNearby) nearbyOverlays.push(startMarker, endMarker);
+    else currentOverlays.push(startMarker, endMarker);
     
     return [sp, ep];
   };
 
-  const drawServerRoute = (map, res, travelMode, options = {}) => {
+  const drawServerRoute = (map, res, travelMode, options = {}, isNearby = false) => {
     const {
       startName = '起',
       endName = '终',
@@ -74,7 +78,7 @@ window.AmapRouteDrawer = (() => {
       return;
     }
 
-    clearRoute(map);
+    clearRoute(map, isNearby);
 
     const paths = res.route.paths || res.route.transits || [];
     if (paths.length === 0) return;
@@ -113,7 +117,8 @@ window.AmapRouteDrawer = (() => {
         });
         
         map.add(polyline);
-        currentOverlays.push(polyline);
+        if (isNearby) nearbyOverlays.push(polyline);
+        else currentOverlays.push(polyline);
         return points;
     };
 
@@ -148,7 +153,8 @@ window.AmapRouteDrawer = (() => {
                      infoWindow.open(map, pts[0]);
                  });
                  map.add(nodeMarker);
-                 currentOverlays.push(nodeMarker);
+                 if (isNearby) nearbyOverlays.push(nodeMarker);
+                 else currentOverlays.push(nodeMarker);
                  
                  // End station transfer marker
                  if (pts.length > 1) {
@@ -159,7 +165,8 @@ window.AmapRouteDrawer = (() => {
                          zIndex: 60
                      });
                      map.add(endMarker);
-                     currentOverlays.push(endMarker);
+                     if (isNearby) nearbyOverlays.push(endMarker);
+                     else currentOverlays.push(endMarker);
                  }
              }
          }
@@ -174,12 +181,12 @@ window.AmapRouteDrawer = (() => {
     if (showRouteEndpoints && routePoints.length > 0) {
       const actualStart = routePoints[0];
       const actualEnd = routePoints[routePoints.length - 1];
-      drawRouteEndpoints(map, actualStart, actualEnd, startName, endName);
+      drawRouteEndpoints(map, actualStart, actualEnd, startName, endName, isNearby);
     }
 
     if (allPoints.length > 0) {
       // Fit view to route bounds
-      map.setFitView(currentOverlays, true, [50, 50, 50, 50]);
+      map.setFitView(isNearby ? nearbyOverlays : currentOverlays, true, [50, 50, 50, 50]);
     }
   };
 
