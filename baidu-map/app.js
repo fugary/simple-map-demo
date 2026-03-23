@@ -260,7 +260,13 @@ const app = createApp({
       clearDrawings();
       const points = [];
       if (centerPoint) {
-        mapInstance.addOverlay(new window.BMapGL.Marker(centerPoint));
+        const centerMarker = new window.BMapGL.Marker(centerPoint);
+        const centerLabel = new window.BMapGL.Label('中心点', {
+          offset: new window.BMapGL.Size(15, -10)
+        });
+        centerLabel.setStyle({ color: '#f56c6c', fontWeight: 'bold', padding: '2px 4px', border: '1px solid #f56c6c', borderRadius: '4px', backgroundColor: '#fff', zIndex: 999 });
+        centerMarker.setLabel(centerLabel);
+        mapInstance.addOverlay(centerMarker);
         points.push(centerPoint);
       }
       items.forEach((item) => {
@@ -580,6 +586,19 @@ const app = createApp({
         height: 80
       });
       mapInstance.openInfoWindow(popup, item.point);
+    };
+
+    const viewNearbyOnMap = (item) => {
+      if (!item || !item.point) return;
+
+      if (locateForm.resolvedCoords) {
+        routeForm.start = locateForm.resolvedCoords;
+        routeForm.end = `${item.point.lng.toFixed(6)},${item.point.lat.toFixed(6)}`;
+        activeTab.value = 'route';
+        calcRoute();
+      } else {
+        viewOnMap(item);
+      }
     };
 
     const quickSearch = (keyword) => {
@@ -1091,6 +1110,7 @@ const app = createApp({
       searchResultTab,
       doSearch,
       viewOnMap,
+      viewNearbyOnMap,
       quickSearch,
       locateForm,
       nearbyResults,

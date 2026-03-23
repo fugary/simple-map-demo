@@ -275,7 +275,7 @@
                     <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; margin-top: 16px;" v-if="nearbyResults.length > 0 || nearbyRawData">
                       <el-tabs v-if="locateForm.apiMode === 'server' && nearbyRawData" v-model="locateResultTab" type="border-card" class="result-tabs">
                         <el-tab-pane :label="t('common.listTab')" name="list">
-                          <el-table :data="nearbyResults" height="100%" style="width: 100%" @row-click="viewOnMap">
+                          <el-table :data="nearbyResults" height="100%" style="width: 100%" @row-click="viewNearbyOnMap">
                             <el-table-column prop="title" :label="t('common.name')" width="130" show-overflow-tooltip></el-table-column>
                             <el-table-column prop="address" :label="t('common.address')" show-overflow-tooltip></el-table-column>
                           </el-table>
@@ -293,7 +293,7 @@
                       </el-tabs>
 
                       <template v-else-if="nearbyResults.length > 0">
-                        <el-table :data="nearbyResults" height="100%" style="width: 100%" @row-click="viewOnMap">
+                        <el-table :data="nearbyResults" height="100%" style="width: 100%" @row-click="viewNearbyOnMap">
                           <el-table-column prop="title" :label="t('common.name')" width="130" show-overflow-tooltip></el-table-column>
                           <el-table-column prop="address" :label="t('common.address')" show-overflow-tooltip></el-table-column>
                         </el-table>

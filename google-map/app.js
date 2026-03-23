@@ -173,12 +173,14 @@ const app = createApp({
       mapInstance.fitBounds(bounds);
     };
 
-    const addMarker = (store, position, title, content) => {
-      const marker = new google.maps.Marker({
+    const addMarker = (store, position, title, content, iconUrl = null) => {
+      const options = {
         position,
         map: mapInstance,
         title
-      });
+      };
+      if (iconUrl) options.icon = iconUrl;
+      const marker = new google.maps.Marker(options);
       if (content) {
         marker.addListener('click', () => {
           const infoWindow = getInfoWindow();
@@ -475,7 +477,8 @@ const app = createApp({
         nearbyMarkers,
         centerPoint,
         'Center',
-        `<div style="font-size:13px;"><b>Center</b><br/>${centerPoint.lng.toFixed(6)}, ${centerPoint.lat.toFixed(6)}</div>`
+        `<div style="font-size:13px;"><b>Center</b><br/>${centerPoint.lng.toFixed(6)}, ${centerPoint.lat.toFixed(6)}</div>`,
+        'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
       );
       points.push(centerMarker.getPosition());
 
@@ -609,10 +612,18 @@ const app = createApp({
     };
 
     const viewNearbyOnMap = (item) => {
-      if (!mapInstance || !item || !item.location) return;
-      renderNearbyResults(nearbyCenterPoint || item.location, nearbyResults.value, item);
-      mapInstance.panTo(item.location);
-      mapInstance.setZoom(16);
+      if (!item || !item.location) return;
+      if (locateForm.resolvedCoords) {
+        routeForm.start = locateForm.resolvedCoords;
+        routeForm.end = `${item.location.lng.toFixed(6)},${item.location.lat.toFixed(6)}`;
+        activeTab.value = 'route';
+        calcRoute();
+      } else {
+        if (!mapInstance) return;
+        renderNearbyResults(nearbyCenterPoint || item.location, nearbyResults.value, item);
+        mapInstance.panTo(item.location);
+        mapInstance.setZoom(16);
+      }
     };
 
     const parseGoogleRouteDetail = (routes) => {

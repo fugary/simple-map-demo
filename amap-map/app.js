@@ -179,9 +179,10 @@ const app = createApp({
       clearDrawings();
       const overlays = [];
       if (centerPoint) {
-        overlays.push(new AMap.Marker({
+        overlays.push(new window.AMap.Marker({
           position: centerPoint,
-          title: 'Center'
+          title: 'Center',
+          icon: '//webapi.amap.com/theme/v1.3/markers/n/mark_b.png' // Blue marker for center
         }));
       }
       items.forEach((item) => {
@@ -431,6 +432,18 @@ const app = createApp({
       popup.setContent(`<strong>${item.title}</strong><br/>${item.address}`);
       popup.open(mapInstance, item.point);
       marker.on('click', () => popup.open(mapInstance, item.point));
+    };
+
+    const viewNearbyOnMap = (item) => {
+      if (!item || !item.point) return;
+      if (locateForm.resolvedCoords) {
+        routeForm.start = locateForm.resolvedCoords;
+        routeForm.end = `${item.point[0].toFixed(6)},${item.point[1].toFixed(6)}`;
+        activeTab.value = 'route';
+        calcRoute();
+      } else {
+        viewOnMap(item);
+      }
     };
 
     const quickSearch = (keyword) => {
@@ -715,6 +728,7 @@ const app = createApp({
       searchResultTab,
       doSearch,
       viewOnMap,
+      viewNearbyOnMap,
       quickSearch,
       locateForm,
       nearbyResults,
