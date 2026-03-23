@@ -1,5 +1,22 @@
 # 开发日志
 
+## 2026-03-23
+
+### Tauri 原生菜单多语言支持与搜索关键字优化
+
+**变更内容：**
+
+1. **地图搜索默认关键字更改**
+   - 将 `baidu-map/app.js` 与 `google-map/app.js` 中的默认搜索关键词和终点由 `帝国大厦` 更改为 `自由女神像`，以便更好地进行海外地图定位测试。
+
+2. **Tauri 原生菜单优化**
+   - 移除了由于手动追加 `关于 (About)` 子菜单而在 Windows 环境下产生的重复冗余菜单。
+   - 使用 Rust 原生重构了全局窗口默认菜单 (`File`, `Edit`, `View`, `Window`, `Help`)，将自定义的 `AboutMetadata` 成功注入到了标准的 Help > About 项中。
+
+3. **前端国际化 (i18n) 与原生菜单同步**
+   - 新增了 Tauri 暴露函数 `#[tauri::command] update_menu_language(lang)`，用于允许前端请求重新绑定并翻译 Tauri 窗口的原生菜单。
+   - 在 `shared/i18n.js` 的 `setLang` 及 `bootstrap` 核心流程中挂载了对 `window.__TAURI__.core.invoke` 的通讯处理，使 Tauri 原生菜单能与 Web 界面的语言切换做到完全同步响应。
+
 ## 2026-03-11
 
 ### 新增 Google Maps 支持 & 多服务商架构重构

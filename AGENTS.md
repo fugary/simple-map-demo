@@ -69,6 +69,9 @@ citsgbt-map-demo/
 - **绑定响应式引用**：在 `setup()` 暴露出 `t` 函数时，必须在函数体内部显式地触碰一次响应式变量（例如 `const lang = currentLang.value;`），以此触发 Vue 的 Proxy getter，使模板正确订阅 `currentLang` 的变化。
 - **语言切换无刷新**：不要使用 `window.location.reload()` 刷新整个网页来更新语言。使用 `window.dispatchEvent` 抛出全局自定义事件（如 `app-language-change`），在每个地图组件的 `setup()` 中监听并同步修改 `currentLang.value`。仅针对无法实时改变外语类型的第三方图商 SDK（如 Google / Amap）做**局部 `<script>` 卸载重载**。
 
+### 3.3 每次开发后必须记录开发日志
+【**重要规则**】每次完成一个功能迭代或修复后，**必须自动将开发日志记录到 `DEVLOG.md` 中**，记录修改的功能点、影响的文件以及背后的原因。这保证了项目迭代历史清晰可见，避免遗忘修改的内容。
+
 ## 4. 技术栈
 - **框架**：Vue 3 (CDN)
 - **UI 库**：Element Plus (CDN)
