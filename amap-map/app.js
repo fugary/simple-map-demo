@@ -809,6 +809,7 @@ const app = createApp({
       calcRoute,
       selectedNearbyItem,
       nearbyRouteDetailInfo,
+      getTravelModeIcon: MapUtils.getTravelModeIcon,
       copyJson: MapUtils.copyJson,
       searchJsonHtml,
       routeJsonHtml,

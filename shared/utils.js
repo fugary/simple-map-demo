@@ -62,6 +62,20 @@ const formatDuration = (seconds) => {
   return `${hours} 小时 ${mins} 分钟`;
 };
 
+const fetchData = async (url, options = {}) => {
+  const tauriInvoke = window.__TAURI_INTERNALS__?.invoke || window.__TAURI__?.core?.invoke || window.__TAURI__?.invoke;
+  if (tauriInvoke && !options.forceBrowser) {
+    try {
+      const response = await tauriInvoke('native_http_get', { url });
+      return JSON.parse(response);
+    } catch (e) {
+      console.warn('Tauri native_http_get failed, falling back to fetch', e);
+    }
+  }
+  const res = await fetch(url, options);
+  return res.json();
+};
+
 const jsonp = (url) => new Promise((resolve, reject) => {
   const callbackName = `jsonp_callback_${Math.round(100000 * Math.random())}`;
   const script = document.createElement('script');
@@ -270,9 +284,19 @@ const buildBaiduPointData = (title, address, lng, lat, raw = null) => {
   };
 };
 
+const getTravelModeIcon = (mode) => {
+  const m = String(mode || '').toLowerCase();
+  if (m === 'transit') return '🚌';
+  if (m === 'walking') return '🚶';
+  if (m.includes('rid') || m.includes('bicycl')) return '🚲';
+  return '🚗';
+};
+
 export const MapUtils = {
+  getTravelModeIcon,
   highlightJson,
   copyJson,
+  fetchData,
   formatDistance,
   formatDuration,
   jsonp,

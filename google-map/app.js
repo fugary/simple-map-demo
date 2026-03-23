@@ -60,6 +60,10 @@ const app = createApp({
     let sharedInfoWindow = null;
     let nearbyCenterPoint = null;
 
+    const isTauri = computed(() => {
+      return !!(window.__TAURI_INTERNALS__?.invoke || window.__TAURI__?.core?.invoke || window.__TAURI__?.invoke);
+    });
+
     const searchLoading = ref(false);
     const routeLoading = ref(false);
     const locateLoading = ref(false);
@@ -130,8 +134,12 @@ const app = createApp({
     };
 
     const proxyUrl = (path, params) => {
-      const base = (proxyBaseUrl.value || DEFAULT_PROXY_BASE).replace(/\/+$/, '');
       const qs = new URLSearchParams(params).toString();
+      const tauriInvoke = window.__TAURI_INTERNALS__?.invoke || window.__TAURI__?.core?.invoke || window.__TAURI__?.invoke;
+      if (tauriInvoke) {
+        return `https://maps.googleapis.com/maps/api/${path}?${qs}`;
+      }
+      const base = (proxyBaseUrl.value || DEFAULT_PROXY_BASE).replace(/\/+$/, '');
       return `${base}/${path}?${qs}`;
     };
 
@@ -305,11 +313,11 @@ const app = createApp({
     };
 
     const geocodeByServer = async (address) => {
-      const res = await fetch(proxyUrl('geocode/json', {
+      const res = await MapUtils.fetchData(proxyUrl('geocode/json', {
         address,
         key: apiKey.value,
         language: mapLanguage()
-      })).then((response) => response.json());
+      }));
       if (res && res.status === 'OK' && Array.isArray(res.results) && res.results[0]) {
         return normalizeLocation(res.results[0].geometry.location);
       }
@@ -401,7 +409,7 @@ const app = createApp({
           if (globalRegion.value && globalRegion.value !== '全国' && !params.query.includes(globalRegion.value)) {
             params.query = `${params.query} ${globalRegion.value}`;
           }
-          const res = await fetch(proxyUrl('place/textsearch/json', params)).then((response) => response.json());
+          const res = await MapUtils.fetchData(proxyUrl('place/textsearch/json', params));
           serverSearchRawData.value = res;
           if (res && res.status === 'OK' && Array.isArray(res.results)) {
             searchResults.value = res.results
@@ -557,13 +565,13 @@ const app = createApp({
     };
 
     const nearbySearchByServer = async (centerPoint) => {
-      const res = await fetch(proxyUrl('place/nearbysearch/json', {
+      const res = await MapUtils.fetchData(proxyUrl('place/nearbysearch/json', {
         location: `${centerPoint.lat},${centerPoint.lng}`,
         radius: String(locateForm.radius || 2000),
         keyword: locateForm.nearbyKeyword,
         key: apiKey.value,
         language: mapLanguage()
-      })).then((response) => response.json());
+      }));
 
       return {
         status: res && res.status,
@@ -738,14 +746,14 @@ const app = createApp({
         BICYCLING: 'bicycling',
         TRANSIT: 'transit'
       };
-      const res = await fetch(proxyUrl('directions/json', {
+      const res = await MapUtils.fetchData(proxyUrl('directions/json', {
         origin: `${originPoint.lat},${originPoint.lng}`,
         destination: `${destPoint.lat},${destPoint.lng}`,
         mode: modeMap[travelMode] || 'driving',
         alternatives: 'true',
         key: apiKey.value,
         language: mapLanguage()
-      })).then((response) => response.json());
+      }));
 
       if (!isNearby) routeResults.value = res ? markRaw(res) : null;
       if (res && res.status === 'OK' && Array.isArray(res.routes)) {
@@ -910,6 +918,8 @@ const app = createApp({
       selectedNearbyItem,
       nearbyRouteDetailInfo,
       calcRoute,
+      isTauri,
+      getTravelModeIcon: MapUtils.getTravelModeIcon,
       copyJson: MapUtils.copyJson,
       searchJsonHtml,
       routeJsonHtml,

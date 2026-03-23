@@ -897,6 +897,8 @@ const app = createApp({
       if (!isNearby) {
         routeResults.value = { provider: 'google', raw: raw ? markRaw(raw) : raw, converted: converted ? markRaw(converted) : converted };
         routeDetailInfo.value = parseGoogleDirectionsDetail(raw);
+      } else {
+        nearbyRouteDetailInfo.value = parseGoogleDirectionsDetail(raw);
       }
 
       if (window.BaiduRouteDrawer) {

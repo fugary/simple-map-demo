@@ -50,7 +50,7 @@
                         <el-option v-for="item in regionList" :key="item" :label="item" :value="item" />
                       </el-select>
                     </el-form-item>
-                    <el-form-item :label="t('common.proxyUrl')">
+                    <el-form-item :label="t('common.proxyUrl')" v-if="!isTauri">
                       <el-input v-model="proxyBaseUrl" :placeholder="t('common.proxyPlaceholder')" clearable />
                     </el-form-item>
                   </el-form>
@@ -286,7 +286,7 @@
                         <strong>{{ selectedNearbyItem.title || selectedNearbyItem.name }}</strong>
                         <p class="card-address">{{ selectedNearbyItem.address }}</p>
                         <div class="card-route-info" v-if="nearbyRouteDetailInfo && nearbyRouteDetailInfo.length > 0">
-                          <span>🚗 {{ nearbyRouteDetailInfo[0].distance || '未知' }}</span>
+                          <span>{{ getTravelModeIcon(locateForm.travelMode) }} {{ nearbyRouteDetailInfo[0].distance || '未知' }}</span>
                           <span>⏱️ {{ nearbyRouteDetailInfo[0].duration || '未知' }}</span>
                         </div>
                       </div>

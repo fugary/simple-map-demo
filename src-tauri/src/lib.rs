@@ -5,6 +5,15 @@ fn update_menu_language(app: tauri::AppHandle, lang: String) {
     }
 }
 
+#[tauri::command]
+async fn native_http_get(url: String) -> Result<String, String> {
+    reqwest::get(&url).await
+        .map_err(|e| e.to_string())?
+        .text()
+        .await
+        .map_err(|e| e.to_string())
+}
+
 fn build_menu(app: &tauri::AppHandle, lang: &str) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
     use tauri::menu::{Menu, Submenu, PredefinedMenuItem, AboutMetadata};
     
@@ -80,7 +89,7 @@ fn build_menu(app: &tauri::AppHandle, lang: &str) -> tauri::Result<tauri::menu::
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![update_menu_language])
+        .invoke_handler(tauri::generate_handler![update_menu_language, native_http_get])
         .setup(|app| {
             let handle = app.handle();
             // Default to Chinese or get from localstorage if possible, but we'll let frontend call update_menu_language soon after load.
