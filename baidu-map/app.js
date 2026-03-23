@@ -260,12 +260,11 @@ const app = createApp({
       clearDrawings();
       const points = [];
       if (centerPoint) {
-        const centerMarker = new window.BMapGL.Marker(centerPoint);
-        const centerLabel = new window.BMapGL.Label('中心点', {
-          offset: new window.BMapGL.Size(15, -10)
+        const blueIconUrl = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIj48cGF0aCBmaWxsPSIjNDI4NUY0IiBkPSJNMTIgMkM4LjEzIDIgNSA1LjEzIDUgOWMwIDUuMjUgNyAxMyA3IDEzczctNy43NSA3LTEzYzAtMy44Ny0zLjEzLTctNy03em0wIDkuNWMtMS4zOCAwLTIuNS0xLjEyLTIuNS0yLjVzMS4xMi0yLjUgMi41LTIuNSAyLjUgMS4xMiAyLjUgMi41LTEuMTIgMi41LTIuNSAyLjV6Ii8+PC9zdmc+';
+        const centerIcon = new window.BMapGL.Icon(blueIconUrl, new window.BMapGL.Size(32, 32), {
+          anchor: new window.BMapGL.Size(16, 32)
         });
-        centerLabel.setStyle({ color: '#f56c6c', fontWeight: 'bold', padding: '2px 4px', border: '1px solid #f56c6c', borderRadius: '4px', backgroundColor: '#fff', zIndex: 999 });
-        centerMarker.setLabel(centerLabel);
+        const centerMarker = new window.BMapGL.Marker(centerPoint, { icon: centerIcon });
         mapInstance.addOverlay(centerMarker);
         points.push(centerPoint);
       }
@@ -594,7 +593,7 @@ const app = createApp({
       if (locateForm.resolvedCoords) {
         routeForm.start = locateForm.resolvedCoords;
         routeForm.end = `${item.point.lng.toFixed(6)},${item.point.lat.toFixed(6)}`;
-        activeTab.value = 'route';
+        routeForm.apiMode = locateForm.apiMode;
         calcRoute();
       } else {
         viewOnMap(item);

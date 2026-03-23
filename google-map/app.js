@@ -616,7 +616,7 @@ const app = createApp({
       if (locateForm.resolvedCoords) {
         routeForm.start = locateForm.resolvedCoords;
         routeForm.end = `${item.location.lng.toFixed(6)},${item.location.lat.toFixed(6)}`;
-        activeTab.value = 'route';
+        routeForm.apiMode = locateForm.apiMode;
         calcRoute();
       } else {
         if (!mapInstance) return;

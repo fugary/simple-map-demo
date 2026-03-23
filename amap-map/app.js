@@ -439,7 +439,7 @@ const app = createApp({
       if (locateForm.resolvedCoords) {
         routeForm.start = locateForm.resolvedCoords;
         routeForm.end = `${item.point[0].toFixed(6)},${item.point[1].toFixed(6)}`;
-        activeTab.value = 'route';
+        routeForm.apiMode = locateForm.apiMode;
         calcRoute();
       } else {
         viewOnMap(item);
