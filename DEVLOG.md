@@ -2,6 +2,14 @@
 
 ## 2026-03-23
 
+### 修复 Tauri 菜单语言切换失效问题
+- **修复**: 前端在执行 `app-language-change` 试图调用 `window.__TAURI__.core.invoke` 同步修改 macOS/Windows 原生菜单时失败，原因是项目升级到 Tauri V2 后默认禁用了全局 API 注入。通过在 `tauri.conf.json` 的 `app` 中开启 `"withGlobalTauri": true` 恢复了前端访问能力。
+- **优化**: 重构了 `shared/i18n.js` 中的通讯代码，增加了向下兼容 `window.__TAURI_INTERNALS__.invoke` 以及旧版本 V1 的多级降级安全保护。
+
+### 修复 GitHub Actions Release 打包资源覆盖竞态问题
+- **修复**: 在 `.github/workflows/build-exe.yml` 中，由于 `macos-latest`, `ubuntu-22.04`, `windows-latest` 三个任务处于同一矩阵并行执行，而每个任务都会执行一次“删除同名 Release”的脚本，导致早先编译完成的平台（例如 M1 芯片的 macOS 平台）上传的产物会被后来执行到删除步骤的平台强行抹掉。
+- **方案**: 抽离了一个前置的 `prepare` 任务用于清理旧的 Tag 与 Release，矩阵编译 `publish` 任务则全部依赖（`needs: prepare`）前置任务，确保所有平台只在此后负责单独把编译好的文件上传追加进已有的 Release 中，完美找回丢失的 Mac 产物。
+
 ### 修复 macOS 原生编译错误
 - **修复**: 移除了在尝试为 macOS 构建自定义应用原生菜单时引入的部分不兼容或缺失的 `PredefinedMenuItem` (如 `services`, `hide_others`, `show_all`, `zoom`)，以修复在 GitHub Actions 上构建 macos-latest 端出现的编译报错。
 

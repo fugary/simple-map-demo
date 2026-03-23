@@ -13,7 +13,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Delete existing release and tag (if any)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="v${{ github.event.inputs.version }}"
+          gh release delete "$VERSION" --yes --cleanup-tag || true
+          git push origin --delete "$VERSION" || true
+
   publish:
+    needs: prepare
     permissions:
       contents: write
     strategy:
@@ -84,15 +102,6 @@ jobs:
 
       - name: Verify frontend build
         run: npm run build
-
-      - name: Delete existing release and tag (if any)
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION="v${{ github.event.inputs.version }}"
-          gh release delete "$VERSION" --yes --cleanup-tag || true
-          git push origin --delete "$VERSION" || true
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
