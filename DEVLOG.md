@@ -2,6 +2,9 @@
 
 ## 2026-03-23
 
+### 修复 macOS 原生编译错误
+- **修复**: 移除了在尝试为 macOS 构建自定义应用原生菜单时引入的部分不兼容或缺失的 `PredefinedMenuItem` (如 `services`, `hide_others`, `show_all`, `zoom`)，以修复在 GitHub Actions 上构建 macos-latest 端出现的编译报错。
+
 ### 附近搜索结果的路线规划全解耦升级 (Baidu/Google/Amap)
 
 **变更内容：**

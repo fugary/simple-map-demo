@@ -26,12 +26,6 @@ fn build_menu(app: &tauri::AppHandle, lang: &str) -> tauri::Result<tauri::menu::
         let app_menu = Submenu::new(app, pkg_name, true)?;
         app_menu.append(&PredefinedMenuItem::about(app, None, Some(about_metadata.clone()))?)?;
         app_menu.append(&PredefinedMenuItem::separator(app)?)?;
-        app_menu.append(&PredefinedMenuItem::services(app, None)?)?;
-        app_menu.append(&PredefinedMenuItem::separator(app)?)?;
-        app_menu.append(&PredefinedMenuItem::hide(app, None)?)?;
-        app_menu.append(&PredefinedMenuItem::hide_others(app, None)?)?;
-        app_menu.append(&PredefinedMenuItem::show_all(app, None)?)?;
-        app_menu.append(&PredefinedMenuItem::separator(app)?)?;
         app_menu.append(&PredefinedMenuItem::quit(app, None)?)?;
         menu.append(&app_menu)?;
     }
@@ -66,8 +60,6 @@ fn build_menu(app: &tauri::AppHandle, lang: &str) -> tauri::Result<tauri::menu::
     let window_text = if is_zh { "窗口" } else { "Window" };
     let window_menu = Submenu::new(app, window_text, true)?;
     window_menu.append(&PredefinedMenuItem::minimize(app, if is_zh { Some("最小化") } else { Some("Minimize") })?)?;
-    #[cfg(target_os = "macos")]
-    window_menu.append(&PredefinedMenuItem::zoom(app, None)?)?;
     menu.append(&window_menu)?;
 
     // Help
