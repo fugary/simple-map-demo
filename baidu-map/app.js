@@ -317,7 +317,7 @@ const app = createApp({
       local.search(region);
     };
 
-    const loadBaiduMap = () => {
+    const loadBaiduMap = async () => {
       if (!browserAk.value && !serverAk.value) {
         ElMessage.warning('至少配置一个 AK 才能继续');
         return;
@@ -333,21 +333,24 @@ const app = createApp({
         mapReady.value = true;
         hasMapLoaded.value = true;
         mapLoading.value = false;
+        ElMessage.info('未填浏览器端 AK，仅可使用服务端模式相关功能');
         return;
       }
 
       const desiredLang = mapLanguage();
       if (window.BMapGL && window.__simpleMapBaiduLang !== desiredLang) unloadBaiduSdk();
-      if (window.BMapGL) {
+      if (window.BMapGL && window.BMapGL.Map) {
         window.__simpleMapBaiduLang = desiredLang;
         destroyMapInstance();
-        initMap();
+        await initMap();
+        if (typeof clearLoader === 'function') clearLoader();
         return;
       }
 
-      window.initBaiduMapCallback = () => {
+      window.initBaiduMapCallback = async () => {
         window.__simpleMapBaiduLang = desiredLang;
-        initMap();
+        await initMap();
+        if (typeof clearLoader === 'function') clearLoader();
       };
 
       const script = document.createElement('script');
@@ -495,7 +498,7 @@ const app = createApp({
         mapReady.value = true;
         hasMapLoaded.value = true;
         mapLoading.value = false;
-        if (typeof clearLoader === 'function') clearLoader();
+        ElMessage.success('地图加载成功');
         autoDetectMapScope(region);
       } catch (error) {
         console.error(error);

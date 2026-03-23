@@ -1,3 +1,4 @@
+/* global fetch, setTimeout, clearTimeout */
 const CHINA_LAT_RANGE = [0.8293, 55.8271];
 const CHINA_LNG_RANGE = [72.004, 137.8347];
 const EARTH_AXIS = 6378245.0;

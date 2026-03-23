@@ -221,7 +221,7 @@ const app = createApp({
       }
     };
 
-    const loadAmap = () => {
+    const loadAmap = async () => {
       if (!browserAk.value && !serverAk.value) {
         ElMessage.warning('至少配置一个 AK 才能继续');
         return;
@@ -253,7 +253,8 @@ const app = createApp({
       if (window.AMap && window.AMap.Map) {
         window.__simpleMapAmapLang = desiredLang;
         destroyMapInstance();
-        initMap();
+        await initMap();
+        if (typeof clearLoader === 'function') clearLoader();
         return;
       }
 
@@ -263,9 +264,10 @@ const app = createApp({
         };
       }
 
-      window.initAmapCallback = () => {
+      window.initAmapCallback = async () => {
         window.__simpleMapAmapLang = desiredLang;
-        initMap();
+        await initMap();
+        if (typeof clearLoader === 'function') clearLoader();
       };
 
       const script = document.createElement('script');
@@ -358,7 +360,6 @@ const app = createApp({
         mapReady.value = true;
         hasMapLoaded.value = true;
         mapLoading.value = false;
-        if (typeof clearLoader === 'function') clearLoader();
         ElMessage.success('地图加载成功');
       } catch (error) {
         console.error('Map init error:', error);
