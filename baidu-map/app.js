@@ -98,6 +98,7 @@ const app = createApp({
 
     const nearbyRouteDetailInfo = ref(null);
     const selectedNearbyItem = ref(null);
+    const nearbyRouteError = ref('');
 
     const searchJsonHtml = computed(() => (
       serverSearchRawData.value
@@ -123,6 +124,11 @@ const app = createApp({
         proxyBaseUrl: config.proxyBaseUrl || DEFAULT_GOOGLE_PROXY_BASE
       };
     };
+
+    watch(() => locateForm.travelMode, () => {
+      nearbyRouteDetailInfo.value = null;
+      nearbyRouteError.value = '';
+    });
 
     const initConfig = () => {
       browserAkList.value = MapUtils.loadConfigList('baidu_map_browser_aks');
@@ -674,6 +680,7 @@ const app = createApp({
       nearbyRawData.value = null;
       selectedNearbyItem.value = null;
       nearbyRouteDetailInfo.value = null;
+      nearbyRouteError.value = '';
 
       try {
         let centerPoint = null;
@@ -927,6 +934,7 @@ const app = createApp({
         clearDrawings();
       } else {
         clearNearbyRouteDrawings();
+        nearbyRouteError.value = '';
       }
 
       if (apiMode === 'google') {
@@ -940,6 +948,7 @@ const app = createApp({
             } else {
               locateLoading.value = false;
               nearbyRouteDetailInfo.value = null;
+              nearbyRouteError.value = '无法解析 Google 路线起终点';
             }
             return;
           }
@@ -959,6 +968,7 @@ const app = createApp({
             ElMessage.error(`Google 路线数据转换失败: ${error.message}`);
           } else {
             nearbyRouteDetailInfo.value = null;
+            nearbyRouteError.value = `Google 路线数据转换失败: ${error.message}`;
           }
         } finally {
           if (!isNearby) routeLoading.value = false;
@@ -977,6 +987,7 @@ const app = createApp({
         } else {
           locateLoading.value = false;
           nearbyRouteDetailInfo.value = null;
+          nearbyRouteError.value = `无法解析起点地址: ${startVal}`;
         }
         return;
       }
@@ -988,6 +999,7 @@ const app = createApp({
         } else {
           locateLoading.value = false;
           nearbyRouteDetailInfo.value = null;
+          nearbyRouteError.value = `无法解析终点地址: ${endVal}`;
         }
         return;
       }
@@ -1010,6 +1022,7 @@ const app = createApp({
             } else {
               locateLoading.value = false;
               nearbyRouteDetailInfo.value = null;
+              nearbyRouteError.value = '请先配置服务端 AK';
             }
             return;
           }
@@ -1041,6 +1054,7 @@ const app = createApp({
               ElMessage.error(`路线规划失败: ${res.status || 'Unknown'}`);
             } else {
               nearbyRouteDetailInfo.value = null;
+              nearbyRouteError.value = `路线规划失败: ${res.status || 'Unknown'}`;
             }
           }
         } catch (error) {
@@ -1049,6 +1063,7 @@ const app = createApp({
             ElMessage.error(`路线规划失败: ${error.message}`);
           } else {
             nearbyRouteDetailInfo.value = null;
+            nearbyRouteError.value = `路线规划失败: ${error.message}`;
           }
         } finally {
           if (!isNearby) routeLoading.value = false;
@@ -1063,6 +1078,7 @@ const app = createApp({
         } else {
           locateLoading.value = false;
           nearbyRouteDetailInfo.value = null;
+          nearbyRouteError.value = '百度前端引擎不支持国际路线规划';
         }
         ElMessage.warning('百度 WebGL 前端引擎不支持国际路线规划，请切换为“服务端”或“Google”模式');
         if (window.BaiduRouteDrawer) {
@@ -1085,6 +1101,7 @@ const app = createApp({
               ElMessage.warning('未能找到有效路线');
             } else {
               nearbyRouteDetailInfo.value = null;
+              nearbyRouteError.value = '未能找到有效路线';
             }
               if (window.BaiduRouteDrawer) {
                 window.BaiduRouteDrawer.drawRouteEndpoints(mapInstance, origin, destination);
@@ -1158,6 +1175,7 @@ const app = createApp({
           } catch (error) {
             console.warn('提取 WebGL 路线详情失败:', error);
             if (!isNearby) ElMessage.error(`路线规划失败: ${error.message}`);
+            else nearbyRouteError.value = `路线规划失败: ${error.message}`;
           }
         }
       };
@@ -1173,6 +1191,10 @@ const app = createApp({
         if (!isNearby) {
           routeLoading.value = false;
           ElMessage.warning('当前出行方式暂不支持');
+        } else {
+          locateLoading.value = false;
+          nearbyRouteDetailInfo.value = null;
+          nearbyRouteError.value = '当前出行方式暂不支持';
         }
         return;
       }
@@ -1231,6 +1253,7 @@ const app = createApp({
       calcRoute,
       selectedNearbyItem,
       nearbyRouteDetailInfo,
+      nearbyRouteError,
       getTravelModeIcon: MapUtils.getTravelModeIcon,
       copyJson: MapUtils.copyJson,
       searchJsonHtml,

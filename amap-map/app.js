@@ -96,6 +96,7 @@ const app = createApp({
 
     const nearbyRouteDetailInfo = ref(null);
     const selectedNearbyItem = ref(null);
+    const nearbyRouteError = ref('');
 
     const searchJsonHtml = computed(() => {
       if (!serverSearchRawData.value) return '';
@@ -110,6 +111,11 @@ const app = createApp({
     const nearbyJsonHtml = computed(() => {
       if (!nearbyRawData.value) return '';
       return MapUtils.highlightJson(JSON.stringify(nearbyRawData.value, null, 2));
+    });
+
+    watch(() => locateForm.travelMode, () => {
+      nearbyRouteDetailInfo.value = null;
+      nearbyRouteError.value = '';
     });
 
     const initConfig = () => {
@@ -477,11 +483,10 @@ const app = createApp({
       const input = locateForm.input.trim();
       if (!input) return;
 
-      locateLoading.value = true;
-      nearbyResults.value = [];
       nearbyRawData.value = null;
       selectedNearbyItem.value = null;
       nearbyRouteDetailInfo.value = null;
+      nearbyRouteError.value = '';
 
       try {
         const center = await getCoords(input);
@@ -701,6 +706,7 @@ const app = createApp({
               ElMessage.error(`路线规划失败: ${res.info || 'Unknown'}`);
             } else {
               nearbyRouteDetailInfo.value = null;
+              nearbyRouteError.value = `路线规划失败: ${res.info || 'Unknown'}`;
             }
           }
         } catch (error) {
@@ -709,6 +715,7 @@ const app = createApp({
             ElMessage.error(`路线规划失败: ${error.message}`);
           } else {
             nearbyRouteDetailInfo.value = null;
+            nearbyRouteError.value = `路线规划失败: ${error.message}`;
           }
         } finally {
           if (!isNearby) routeLoading.value = false;
@@ -729,6 +736,7 @@ const app = createApp({
         } else {
           locateLoading.value = false;
           nearbyRouteDetailInfo.value = null;
+          nearbyRouteError.value = '当前出行方式暂不支持';
         }
         ElMessage.warning('当前出行方式暂不支持');
         return;
@@ -774,6 +782,7 @@ const app = createApp({
             ElMessage.warning(`路线规划失败: ${status}`);
           } else {
             nearbyRouteDetailInfo.value = null;
+            nearbyRouteError.value = `路线规划失败: ${status}`;
           }
         }
       });
@@ -819,6 +828,7 @@ const app = createApp({
       calcRoute,
       selectedNearbyItem,
       nearbyRouteDetailInfo,
+      nearbyRouteError,
       getTravelModeIcon: MapUtils.getTravelModeIcon,
       copyJson: MapUtils.copyJson,
       searchJsonHtml,

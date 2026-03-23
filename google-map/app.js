@@ -104,6 +104,7 @@ const app = createApp({
 
     const nearbyRouteDetailInfo = ref(null);
     const selectedNearbyItem = ref(null);
+    const nearbyRouteError = ref('');
 
     const searchJsonHtml = computed(() => {
       if (!serverSearchRawData.value) return '';
@@ -118,6 +119,11 @@ const app = createApp({
     const nearbyJsonHtml = computed(() => {
       if (!nearbyRawData.value) return '';
       return MapUtils.highlightJson(JSON.stringify(nearbyRawData.value, null, 2));
+    });
+
+    watch(() => locateForm.travelMode, () => {
+      nearbyRouteDetailInfo.value = null;
+      nearbyRouteError.value = '';
     });
 
     const initConfig = () => {
@@ -591,11 +597,10 @@ const app = createApp({
         return;
       }
 
-      locateLoading.value = true;
-      nearbyResults.value = [];
       nearbyRawData.value = null;
       selectedNearbyItem.value = null;
       nearbyRouteDetailInfo.value = null;
+      nearbyRouteError.value = '';
       clearNearbyMarkers();
 
       try {
@@ -773,6 +778,7 @@ const app = createApp({
           ElMessage.error(`路线规划失败: ${res.status || 'Unknown'}`);
         } else {
           nearbyRouteDetailInfo.value = null;
+          nearbyRouteError.value = `路线规划失败: ${res.status || 'Unknown'}`;
         }
       }
     };
@@ -794,6 +800,7 @@ const app = createApp({
         routeResults.value = null;
       } else {
         locateLoading.value = true;
+        nearbyRouteError.value = ''; // Clear error when starting a new nearby route calculation
       }
 
       const originPoint = await resolveLocation(startVal, apiMode);
@@ -805,6 +812,7 @@ const app = createApp({
         } else { 
           locateLoading.value = false;
           nearbyRouteDetailInfo.value = null;
+          nearbyRouteError.value = `无法解析起点地址: ${startVal}`;
         }
         return;
       }
@@ -823,6 +831,7 @@ const app = createApp({
         } else { 
           locateLoading.value = false;
           nearbyRouteDetailInfo.value = null;
+          nearbyRouteError.value = `无法解析终点地址: ${endVal}`;
         }
         return;
       }
@@ -877,6 +886,7 @@ const app = createApp({
               ElMessage.success('路线规划成功');
             } else {
               nearbyRouteDetailInfo.value = parseGoogleRouteDetail(result.routes);
+              nearbyRouteError.value = ''; // Clear error on success
             }
           } else {
             if (!isNearby) {
@@ -884,12 +894,14 @@ const app = createApp({
               ElMessage.error(`路线规划失败: ${status}`);
             } else {
               nearbyRouteDetailInfo.value = null;
+              nearbyRouteError.value = `路线规划失败: ${status}`;
             }
           }
         });
       } catch (error) {
         console.error('Route error:', error);
         if (!isNearby) ElMessage.error(`路线规划失败: ${error.message}`);
+        else nearbyRouteError.value = `Route error: ${error.message}`;
       } finally {
         if (apiMode === 'server') {
           if (!isNearby) routeLoading.value = false;
@@ -900,6 +912,13 @@ const app = createApp({
 
     onMounted(() => {
       initConfig();
+    });
+
+    // Watch for changes in travelMode for nearby search and re-calculate route
+    watch(() => locateForm.travelMode, (newVal, oldVal) => {
+      if (newVal !== oldVal && selectedNearbyItem.value && locateForm.resolvedCoords) {
+        doCalcRoute(locateForm.apiMode, newVal, locateForm.resolvedCoords, `${selectedNearbyItem.value.location.lng.toFixed(6)},${selectedNearbyItem.value.location.lat.toFixed(6)}`, true);
+      }
     });
 
     return {
@@ -934,6 +953,7 @@ const app = createApp({
       routeResultTab,
       selectedNearbyItem,
       nearbyRouteDetailInfo,
+      nearbyRouteError,
       calcRoute,
       isTauri,
       getTravelModeIcon: MapUtils.getTravelModeIcon,

@@ -194,6 +194,19 @@ html, body {
 }
 
 /* ====== Result Tabs ====== */
+.card-route-error {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--el-color-warning);
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.card-route-error span {
+  line-height: 1.4;
+}
+
 .result-tabs {
   flex: 1;
   display: flex;

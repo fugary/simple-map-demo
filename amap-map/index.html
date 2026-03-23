@@ -286,6 +286,9 @@
                           <span>{{ getTravelModeIcon(locateForm.travelMode) }} {{ nearbyRouteDetailInfo[0].distance || '未知' }}</span>
                           <span>⏱️ {{ nearbyRouteDetailInfo[0].duration || '未知' }}</span>
                         </div>
+                        <div class="card-route-error" v-else-if="nearbyRouteError">
+                          <span>⚠️ {{ nearbyRouteError }}</span>
+                        </div>
                       </div>
                     </div>
 
